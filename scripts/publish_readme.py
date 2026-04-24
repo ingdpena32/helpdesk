@@ -1,4 +1,8 @@
-# Helpdesk — Gestión de tickets
+"""Escribe README.md en UTF-8 (evita UTF-16 que muestra NUL en VS Code)."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TEXT = r"""# Helpdesk — Gestión de tickets
 
 Monorepo de **helpdesk/tickets** con **React + TypeScript** (Vite) y **API REST en Python estándar** (`http.server`, sin Flask, FastAPI ni Django), persistencia en **PostgreSQL**.
 
@@ -136,3 +140,8 @@ npm run preview
 ## Licencia
 
 Proyecto de ejemplo / evolución; define licencia y políticas de despliegue según tu entorno.
+"""
+
+if __name__ == "__main__":
+    (ROOT / "README.md").write_text(TEXT, encoding="utf-8", newline="\n")
+    print("OK:", ROOT / "README.md")
