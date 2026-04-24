@@ -1,0 +1,85 @@
+"""
+Servidor HTTP con biblioteca estándar.
+Ejecutar desde la carpeta `backend`:  python main.py
+(o: python -m app.main  con PYTHONPATH apuntando a backend)
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from urllib.parse import urlparse
+
+# Permite ejecutar `python app/main.py` desde la carpeta backend.
+if __package__ in (None, ""):
+    _backend_root = Path(__file__).resolve().parent.parent
+    if str(_backend_root) not in sys.path:
+        sys.path.insert(0, str(_backend_root))
+
+from app.router import dispatch
+from app.utils.response import json_body, merge_headers
+
+
+class _RestHandler(BaseHTTPRequestHandler):
+    server_version = "HelpdeskAPI/0.1"
+
+    def log_message(self, format: str, *args) -> None:
+        print(f"[{self.address_string()}] {format % args}")
+
+    def _write_response(self, status: int, payload: dict) -> None:
+        body = json_body(payload)
+        self.send_response(status)
+        for k, v in merge_headers({"Content-Length": str(len(body))}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        for k, v in merge_headers().items():
+            self.send_header(k, v)
+        self.end_headers()
+
+    def do_GET(self) -> None:
+        path = urlparse(self.path).path
+        status, body = dispatch("GET", path, None)
+        self._write_response(status, body)
+
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        raw = self.rfile.read(length) if length > 0 else b""
+
+        parsed: dict | None
+        if not raw:
+            parsed = None
+        else:
+            try:
+                parsed = json.loads(raw.decode("utf-8"))
+                if parsed is not None and not isinstance(parsed, dict):
+                    self._write_response(400, {"error": "El cuerpo debe ser un objeto JSON"})
+                    return
+            except json.JSONDecodeError:
+                self._write_response(400, {"error": "JSON inválido o mal formado"})
+                return
+
+        status, body = dispatch("POST", path, parsed)
+        self._write_response(status, body)
+
+
+def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
+    server = HTTPServer((host, port), _RestHandler)
+    print(f"Servidor escuchando en http://{host}:{port}")
+    print("  POST /auth/login  — login JSON")
+    print("  GET  /health      — comprobación")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nDeteniendo servidor…")
+        server.shutdown()
+
+
+if __name__ == "__main__":
+    run_server()
