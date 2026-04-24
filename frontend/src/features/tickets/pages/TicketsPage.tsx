@@ -15,7 +15,6 @@ const priorityOptions: { value: TicketPriority | ''; label: string }[] = [
   { value: 'low', label: 'Baja' },
   { value: 'medium', label: 'Media' },
   { value: 'high', label: 'Alta' },
-  { value: 'critical', label: 'Crítica' },
 ]
 
 function formatDate(iso: string) {
@@ -24,6 +23,32 @@ function formatDate(iso: string) {
   } catch {
     return iso
   }
+}
+
+function categoryLabel(t: { category: string | null; category_detail?: { name: string } | null }) {
+  if (typeof t.category === 'string' && t.category.trim()) return t.category
+  return t.category_detail?.name ?? '—'
+}
+
+/** La API y la BD usan inglés; en pantalla mostramos español. */
+const STATUS_LABEL: Record<string, string> = {
+  open: 'Abierto',
+  in_progress: 'En progreso',
+  closed: 'Cerrado',
+}
+
+const PRIORITY_LABEL: Record<string, string> = {
+  low: 'Baja',
+  medium: 'Media',
+  high: 'Alta',
+}
+
+function statusLabel(status: string) {
+  return STATUS_LABEL[status] ?? status.replaceAll('_', ' ')
+}
+
+function priorityLabel(priority: string) {
+  return PRIORITY_LABEL[priority] ?? priority
 }
 
 function TicketsPage() {
@@ -43,7 +68,7 @@ function TicketsPage() {
         <div>
           <h2 className="font-architectural text-4xl font-extrabold tracking-tight text-on-surface">Tickets</h2>
           <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-on-surface-variant">
-            Listado conectado a la API de Django REST Framework.
+            Listado conectado a la API del backend (tickets en PostgreSQL).
           </p>
         </div>
       </div>
@@ -121,9 +146,9 @@ function TicketsPage() {
             {data?.results.map((t) => (
               <tr key={t.id} className="border-b border-white/5 text-sm text-on-surface">
                 <td className="px-6 py-4 font-medium">{t.title}</td>
-                <td className="px-6 py-4 text-on-surface-variant">{t.category_detail?.name ?? '—'}</td>
-                <td className="px-6 py-4 capitalize text-on-surface-variant">{t.status.replaceAll('_', ' ')}</td>
-                <td className="px-6 py-4 capitalize text-on-surface-variant">{t.priority}</td>
+                <td className="px-6 py-4 text-on-surface-variant">{categoryLabel(t)}</td>
+                <td className="px-6 py-4 text-on-surface-variant">{statusLabel(t.status)}</td>
+                <td className="px-6 py-4 text-on-surface-variant">{priorityLabel(t.priority)}</td>
                 <td className="px-6 py-4 text-on-surface-variant">{formatDate(t.updated_at)}</td>
               </tr>
             ))}

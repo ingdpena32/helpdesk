@@ -15,8 +15,11 @@ export class ApiError extends Error {
 export type ApiRequestInit = RequestInit & { auth?: boolean; _retry?: boolean }
 
 function joinUrl(path: string): string {
+  const raw = baseUrl().replace(/\/+$/, '')
   const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${baseUrl()}${normalized}`
+  // Si base está vacío, el path va al mismo origen (Vite proxy /api → backend).
+  if (!raw) return normalized
+  return `${raw}${normalized}`
 }
 
 function buildHeaders(initHeaders?: HeadersInit, auth = true): Headers {

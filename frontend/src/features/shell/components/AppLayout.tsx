@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import type { UserRole } from '../../auth/types/auth.types'
 import { useAuth } from '../../auth/context/AuthContext'
+import NewTicketModal from '../../tickets/components/NewTicketModal'
 
 type NavItem = { to: string; icon: string; label: string; roles: UserRole[] }
 
@@ -16,6 +18,7 @@ const allNavItems: NavItem[] = [
 function AppLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [newTicketOpen, setNewTicketOpen] = useState(false)
   const role = user?.role
   const navItems = allNavItems.filter((item) => (role ? item.roles.includes(role) : false))
 
@@ -31,6 +34,8 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
+      <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} />
+
       <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col overflow-y-auto border-r border-white/5 bg-surface-container-low py-6">
         <div className="mb-8 px-6">
           <div className="flex items-center gap-3">
@@ -68,6 +73,7 @@ function AppLayout() {
         <div className="mt-auto space-y-2 px-6 pb-6 pt-4">
           <button
             type="button"
+            onClick={() => setNewTicketOpen(true)}
             className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-slate-900 transition-transform"
           >
             <span className="material-symbols-outlined text-[20px]">add</span>

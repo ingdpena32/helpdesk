@@ -1,6 +1,6 @@
-import { apiGet } from '../../../shared/api/client'
+import { apiGet, apiPost } from '../../../shared/api/client'
 import type { Paginated } from '../../../shared/api/types'
-import type { Ticket, TicketFilters } from '../types/ticket.types'
+import type { CreateTicketPayload, Ticket, TicketFilters } from '../types/ticket.types'
 
 function toSearchParams(filters: Record<string, string | number | undefined>): string {
   const params = new URLSearchParams()
@@ -13,4 +13,8 @@ function toSearchParams(filters: Record<string, string | number | undefined>): s
 
 export function listTickets(filters: TicketFilters = {}): Promise<Paginated<Ticket>> {
   return apiGet<Paginated<Ticket>>(`/api/tickets/${toSearchParams(filters)}`)
+}
+
+export function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
+  return apiPost<Ticket>('/api/tickets/', payload)
 }

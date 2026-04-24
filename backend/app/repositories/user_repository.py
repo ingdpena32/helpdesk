@@ -27,3 +27,22 @@ def find_by_email(conn: PGConnection, email: str) -> User | None:
         return None
     user_id, em, pwd, role = row
     return User(id=int(user_id), email=str(em), password=str(pwd), role=str(role))
+
+
+def find_by_id(conn: PGConnection, user_id: int) -> User | None:
+    """Comprueba existencia de usuario (p. ej. FK created_by)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, email, password, role
+            FROM users
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (user_id,),
+        )
+        row: tuple[Any, ...] | None = cur.fetchone()
+    if row is None:
+        return None
+    uid, em, pwd, role = row
+    return User(id=int(uid), email=str(em), password=str(pwd), role=str(role))

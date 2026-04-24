@@ -7,7 +7,7 @@ from typing import Any
 from app.services import auth_service
 
 
-def post_login(body: dict[str, Any] | None) -> tuple[int, dict]:
+def post_login(body: dict[str, Any] | None, _query: dict[str, str]) -> tuple[int, dict]:
     """
     POST /auth/login o POST /api/auth/login/
     Frontend: {"user_name": "...", "password": "..."} (user_name suele ser el email).

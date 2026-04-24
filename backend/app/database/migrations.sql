@@ -1,6 +1,11 @@
--- Ejecutar en PgAdmin4 sobre la base de datos configurada (p. ej. helpdesk).
--- Crea la tabla users y un usuario de prueba para el login.
+-- =============================================================================
+-- Script completo para PgAdmin4 (base de datos helpdesk u otra configurada)
+-- Orden: primero users, luego tickets (FK a users).
+-- =============================================================================
 
+-- -----------------------------------------------------------------------------
+-- Tabla: users
+-- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -9,7 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Datos de prueba (contraseña en texto plano solo para aprendizaje local).
 INSERT INTO users (email, password, role)
 VALUES ('admin@test.com', '123456', 'admin')
 ON CONFLICT (email) DO NOTHING;
