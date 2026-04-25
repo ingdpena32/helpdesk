@@ -3,7 +3,6 @@ import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
-import { useAuth } from '../../auth/context/AuthContext'
 import { createTicket } from '../services/ticketsApi'
 import type { TicketCategory, TicketPriority } from '../types/ticket.types'
 import { TICKET_CATEGORIES } from '../types/ticket.types'
@@ -34,7 +33,6 @@ function parseApiError(err: unknown): string {
 export default function NewTicketModal({ open, onClose }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { user } = useAuth()
   const titleId = useId()
   const descId = useId()
   const priorityId = useId()
@@ -77,10 +75,6 @@ export default function NewTicketModal({ open, onClose }: Props) {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    if (!user?.id) {
-      setFormError('No hay usuario en sesión.')
-      return
-    }
     const t = title.trim()
     const d = description.trim()
     if (!t || !d) {
@@ -90,7 +84,6 @@ export default function NewTicketModal({ open, onClose }: Props) {
     mutation.mutate({
       title: t,
       description: d,
-      created_by: user.id,
       priority,
       category,
     })

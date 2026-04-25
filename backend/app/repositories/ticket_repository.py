@@ -10,6 +10,10 @@ from psycopg2.extensions import connection as PGConnection
 from app.models.ticket import Ticket
 
 
+def _active_clause(only_active: bool) -> str:
+    return "deleted_at IS NULL" if only_active else "TRUE"
+
+
 def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
     (
         tid,
@@ -24,6 +28,7 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         assigned_to,
         resolution,
         closed_at,
+        deleted_at,
     ) = row
     return Ticket(
         id=int(tid),
@@ -38,6 +43,7 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         assigned_to=int(assigned_to) if assigned_to is not None else None,
         resolution=str(resolution) if resolution is not None else None,
         closed_at=closed_at,
+        deleted_at=deleted_at,
     )
 
 
@@ -58,7 +64,7 @@ def insert(
             VALUES (%s, %s, %s, %s, %s)
             RETURNING
                 id, title, description, created_by, priority, category, status,
-                created_at, updated_at, assigned_to, resolution, closed_at
+                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
             """,
             (title, description, created_by, priority, category),
         )
@@ -76,7 +82,7 @@ def count_filtered(
     assigned_to: int | None = None,
     category: str | None = None,
 ) -> int:
-    conditions: list[str] = []
+    conditions: list[str] = ["deleted_at IS NULL"]
     params: list[Any] = []
     if status:
         conditions.append("status = %s")
@@ -90,7 +96,7 @@ def count_filtered(
     if category:
         conditions.append("category = %s")
         params.append(category)
-    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    where = " WHERE " + " AND ".join(conditions)
     with conn.cursor() as cur:
         cur.execute(f"SELECT COUNT(*) FROM tickets{where}", tuple(params))
         row = cur.fetchone()
@@ -107,7 +113,7 @@ def list_filtered(
     limit: int = 20,
     offset: int = 0,
 ) -> list[Ticket]:
-    conditions: list[str] = []
+    conditions: list[str] = ["deleted_at IS NULL"]
     params: list[Any] = []
     if status:
         conditions.append("status = %s")
@@ -121,12 +127,12 @@ def list_filtered(
     if category:
         conditions.append("category = %s")
         params.append(category)
-    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    where = " WHERE " + " AND ".join(conditions)
     params.extend([limit, offset])
     sql = f"""
         SELECT
             id, title, description, created_by, priority, category, status,
-            created_at, updated_at, assigned_to, resolution, closed_at
+            created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
         FROM tickets
         {where}
         ORDER BY updated_at DESC
@@ -136,3 +142,82 @@ def list_filtered(
         cur.execute(sql, tuple(params))
         rows = cur.fetchall()
     return [_row_to_ticket(r) for r in rows]
+
+
+def find_by_id(conn: PGConnection, ticket_id: int, *, only_active: bool = True) -> Ticket | None:
+    active_sql = _active_clause(only_active)
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT
+                id, title, description, created_by, priority, category, status,
+                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+            FROM tickets
+            WHERE id = %s AND ({active_sql})
+            LIMIT 1
+            """,
+            (ticket_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return _row_to_ticket(row)
+
+
+def update_fields(
+    conn: PGConnection,
+    ticket_id: int,
+    *,
+    status: str,
+    assigned_to: int | None,
+    resolution: str | None,
+    closed_at: datetime | None,
+) -> Ticket | None:
+    """Actualiza ciclo de vida; no afecta filas eliminadas lógicamente."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE tickets
+            SET
+                status = %s,
+                assigned_to = %s,
+                resolution = %s,
+                closed_at = %s,
+                updated_at = NOW()
+            WHERE id = %s AND deleted_at IS NULL
+            RETURNING
+                id, title, description, created_by, priority, category, status,
+                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+            """,
+            (status, assigned_to, resolution, closed_at, ticket_id),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return _row_to_ticket(row)
+
+
+def soft_delete(conn: PGConnection, ticket_id: int) -> str:
+    """
+    Marca deleted_at = NOW() si el ticket existe y no estaba borrado.
+    Devuelve: 'deleted' | 'not_found' | 'already_deleted'
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE tickets
+            SET deleted_at = NOW(), updated_at = NOW()
+            WHERE id = %s AND deleted_at IS NULL
+            RETURNING id
+            """,
+            (ticket_id,),
+        )
+        upd = cur.fetchone()
+    if upd is not None:
+        return "deleted"
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM tickets WHERE id = %s LIMIT 1", (ticket_id,))
+        exists = cur.fetchone()
+    if exists is None:
+        return "not_found"
+    return "already_deleted"

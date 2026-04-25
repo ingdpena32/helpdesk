@@ -1,17 +1,30 @@
+import { useState } from 'react'
+
+import CreateAgentModal from '../components/CreateAgentModal'
 import { useAgentsQuery } from '../hooks/useAgentsQuery'
 
 function AgentsPage() {
   const { data, isLoading, error } = useAgentsQuery()
+  const [createOpen, setCreateOpen] = useState(false)
 
   return (
     <section className="space-y-10">
+      <CreateAgentModal open={createOpen} onClose={() => setCreateOpen(false)} />
+
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="font-architectural text-4xl font-extrabold tracking-tight text-on-surface">Agentes</h2>
           <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-on-surface-variant">
-            Perfiles de agente expuestos por la API (`/api/agents/`).
+            Listado y alta vía API (`GET/POST /api/agents`).
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="btn-new-ticket shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-slate-900"
+        >
+          Crear agente
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">

@@ -14,7 +14,7 @@ def cors_headers() -> dict[str, str]:
     """Cabeceras CORS para desarrollo (React en otro puerto)."""
     return {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
         "Access-Control-Max-Age": "86400",
     }

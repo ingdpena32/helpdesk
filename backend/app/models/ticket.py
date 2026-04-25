@@ -21,3 +21,4 @@ class Ticket:
     assigned_to: Optional[int]
     resolution: Optional[str]
     closed_at: Optional[datetime]
+    deleted_at: Optional[datetime] = None

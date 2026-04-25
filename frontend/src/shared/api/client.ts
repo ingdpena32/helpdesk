@@ -19,6 +19,14 @@ function joinUrl(path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`
   // Si base está vacío, el path va al mismo origen (Vite proxy /api → backend).
   if (!raw) return normalized
+  // Evitar doble prefijo cuando VITE_API_BASE_URL termina en /api y el path empieza por /api/...
+  const baseEndsWithApi = /\/api$/i.test(raw)
+  if (baseEndsWithApi && normalized.startsWith('/api/')) {
+    return `${raw}${normalized.slice('/api'.length)}`
+  }
+  if (baseEndsWithApi && normalized === '/api') {
+    return raw
+  }
   return `${raw}${normalized}`
 }
 
@@ -41,7 +49,7 @@ async function tryRefreshToken(): Promise<string | null> {
   if (!refresh) return null
 
   try {
-    const res = await fetch(joinUrl('/api/auth/refresh/'), {
+    const res = await fetch(joinUrl('/api/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ refresh }),

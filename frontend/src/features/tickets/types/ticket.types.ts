@@ -44,10 +44,24 @@ export type TicketFilters = {
   category?: string
 }
 
+/** Creación: el backend toma el creador del token (no se envía created_by). */
 export type CreateTicketPayload = {
   title: string
   description: string
-  created_by: number
   priority: TicketPriority
   category: TicketCategory
+}
+
+export type PatchTicketPayload = {
+  status?: TicketStatus
+  assigned_to?: number | null
+  resolution?: string | null
+}
+
+export type TicketComment = {
+  id: number
+  user_id: number
+  username: string
+  content: string
+  created_at: string
 }

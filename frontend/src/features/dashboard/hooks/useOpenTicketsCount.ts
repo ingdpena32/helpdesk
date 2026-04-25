@@ -5,7 +5,7 @@ import type { Paginated } from '../../../shared/api/types'
 import type { Ticket } from '../../tickets/types/ticket.types'
 
 async function fetchOpenTicketsCount(): Promise<number> {
-  const data = await apiGet<Paginated<Ticket>>('/api/tickets/?status=open&page_size=1')
+  const data = await apiGet<Paginated<Ticket>>('/api/tickets?status=open&page_size=1')
   return data.count
 }
 

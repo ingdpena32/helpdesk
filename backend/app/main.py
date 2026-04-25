@@ -10,6 +10,7 @@ import json
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import Mapping
 from urllib.parse import parse_qs, urlparse
 
 # Permite ejecutar `python app/main.py` desde la carpeta backend.
@@ -32,6 +33,10 @@ def _flat_query(query_string: str) -> dict[str, str]:
     return out
 
 
+def _headers_dict(handler: BaseHTTPRequestHandler) -> Mapping[str, str]:
+    return {str(k): str(v) for k, v in handler.headers.items()}
+
+
 class _RestHandler(BaseHTTPRequestHandler):
     server_version = "HelpdeskAPI/0.1"
 
@@ -46,6 +51,22 @@ class _RestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _read_json_body_required(self) -> dict | None:
+        """Lee JSON cuando Content-Length > 0. Devuelve None si ya respondió 400."""
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        raw = self.rfile.read(length) if length > 0 else b""
+        if not raw:
+            return {}
+        try:
+            loaded = json.loads(raw.decode("utf-8"))
+            if loaded is not None and not isinstance(loaded, dict):
+                self._write_response(400, {"error": "El cuerpo debe ser un objeto JSON"})
+                return None
+            return loaded
+        except json.JSONDecodeError:
+            self._write_response(400, {"error": "JSON inválido o mal formado"})
+            return None
+
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         for k, v in merge_headers().items():
@@ -55,40 +76,55 @@ class _RestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         q = _flat_query(parsed.query)
-        status, body = dispatch("GET", parsed.path, None, q)
+        status, body = dispatch("GET", parsed.path, None, q, _headers_dict(self))
         self._write_response(status, body)
 
     def do_POST(self) -> None:
         parsed_url = urlparse(self.path)
         q = _flat_query(parsed_url.query)
         length = int(self.headers.get("Content-Length", "0") or "0")
-        raw = self.rfile.read(length) if length > 0 else b""
-
-        body_json: dict | None
-        if not raw:
-            body_json = None
+        if length == 0:
+            body_json: dict | None = None
         else:
-            try:
-                loaded = json.loads(raw.decode("utf-8"))
-                if loaded is not None and not isinstance(loaded, dict):
-                    self._write_response(400, {"error": "El cuerpo debe ser un objeto JSON"})
-                    return
-                body_json = loaded
-            except json.JSONDecodeError:
-                self._write_response(400, {"error": "JSON inválido o mal formado"})
+            body_json = self._read_json_body_required()
+            if body_json is None:
                 return
 
-        status, body = dispatch("POST", parsed_url.path, body_json, q)
+        status, body = dispatch("POST", parsed_url.path, body_json, q, _headers_dict(self))
+        self._write_response(status, body)
+
+    def do_PATCH(self) -> None:
+        parsed_url = urlparse(self.path)
+        q = _flat_query(parsed_url.query)
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length == 0:
+            body_json = {}
+        else:
+            body_json = self._read_json_body_required()
+            if body_json is None:
+                return
+
+        status, body = dispatch("PATCH", parsed_url.path, body_json, q, _headers_dict(self))
+        self._write_response(status, body)
+
+    def do_DELETE(self) -> None:
+        parsed = urlparse(self.path)
+        q = _flat_query(parsed.query)
+        status, body = dispatch("DELETE", parsed.path, None, q, _headers_dict(self))
         self._write_response(status, body)
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     server = HTTPServer((host, port), _RestHandler)
     print(f"Servidor escuchando en http://{host}:{port}")
-    print("  POST /api/auth/login/  — login")
-    print("  GET  /api/tickets/     — listado tickets")
-    print("  POST /api/tickets/     — crear ticket")
-    print("  GET  /health           — comprobación")
+    print("  POST /api/auth/login/     — login")
+    print("  POST /api/auth/refresh/   — renovar access")
+    print("  GET  /api/tickets/        — listado tickets")
+    print("  POST /api/tickets/        — crear ticket")
+    print("  GET  /api/tickets/{{id}}  — detalle")
+    print("  PATCH /api/tickets/{{id}} — actualizar")
+    print("  GET  /api/agents/         — agentes (admin)")
+    print("  GET  /health              — comprobación")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

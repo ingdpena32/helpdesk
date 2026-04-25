@@ -1,7 +1,13 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
+import { Link } from 'react-router-dom'
 
-import type { TicketStatus, TicketPriority } from '../types/ticket.types'
+import { ApiError } from '../../../shared/api/client'
+import { useAuth } from '../../auth/context/AuthContext'
+import DeleteTicketConfirmModal from '../components/DeleteTicketConfirmModal'
 import { useTicketsQuery } from '../hooks/useTicketsQuery'
+import { deleteTicket } from '../services/ticketsApi'
+import type { TicketStatus, TicketPriority } from '../types/ticket.types'
 
 const statusOptions: { value: TicketStatus | ''; label: string }[] = [
   { value: '', label: 'Todos' },
@@ -51,19 +57,69 @@ function priorityLabel(priority: string) {
   return PRIORITY_LABEL[priority] ?? priority
 }
 
+function parseDeleteError(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'No se pudo eliminar el ticket.'
+  try {
+    const body = JSON.parse(err.message) as { error?: string }
+    if (typeof body.error === 'string') return body.error
+  } catch {
+    /* no JSON */
+  }
+  return err.message || 'No se pudo eliminar el ticket.'
+}
+
 function TicketsPage() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
   const statusId = useId()
   const priorityId = useId()
   const [status, setStatus] = useState<TicketStatus | ''>('')
   const [priority, setPriority] = useState<TicketPriority | ''>('')
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const { data, isLoading, error } = useTicketsQuery({
     ...(status ? { status } : {}),
     ...(priority ? { priority } : {}),
   })
 
+  const isAdmin = user?.role === 'admin'
+  const colSpan = isAdmin ? 6 : 5
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteTicket,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      void queryClient.invalidateQueries({ queryKey: ['tickets', 'count', 'open'] })
+      setDeleteTarget(null)
+      setDeleteError(null)
+    },
+    onError: (e: unknown) => {
+      setDeleteError(parseDeleteError(e))
+    },
+  })
+
   return (
     <section className="space-y-10">
+      <DeleteTicketConfirmModal
+        open={deleteTarget !== null}
+        title={deleteTarget?.title ?? ''}
+        loading={deleteMutation.isPending}
+        error={deleteError}
+        onClose={() => {
+          if (!deleteMutation.isPending) {
+            setDeleteTarget(null)
+            setDeleteError(null)
+          }
+        }}
+        onConfirm={() => {
+          if (deleteTarget) {
+            setDeleteError(null)
+            deleteMutation.mutate(deleteTarget.id)
+          }
+        }}
+      />
+
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="font-architectural text-4xl font-extrabold tracking-tight text-on-surface">Tickets</h2>
@@ -119,37 +175,56 @@ function TicketsPage() {
               <th className="px-6 py-4">Estado</th>
               <th className="px-6 py-4">Prioridad</th>
               <th className="px-6 py-4">Actualización</th>
+              {isAdmin ? <th className="px-6 py-4 text-right">Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center text-sm text-on-surface-variant">
+                <td colSpan={colSpan} className="px-6 py-20 text-center text-sm text-on-surface-variant">
                   Cargando…
                 </td>
               </tr>
             ) : null}
             {error ? (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center text-sm text-on-surface-variant">
+                <td colSpan={colSpan} className="px-6 py-20 text-center text-sm text-on-surface-variant">
                   {(error as Error).message}
                 </td>
               </tr>
             ) : null}
             {data && data.results.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center text-sm text-on-surface-variant">
+                <td colSpan={colSpan} className="px-6 py-20 text-center text-sm text-on-surface-variant">
                   No hay tickets con los filtros actuales.
                 </td>
               </tr>
             ) : null}
             {data?.results.map((t) => (
               <tr key={t.id} className="border-b border-white/5 text-sm text-on-surface">
-                <td className="px-6 py-4 font-medium">{t.title}</td>
+                <td className="px-6 py-4 font-medium">
+                  <Link to={`/tickets/${t.id}`} className="text-primary hover:underline">
+                    {t.title}
+                  </Link>
+                </td>
                 <td className="px-6 py-4 text-on-surface-variant">{categoryLabel(t)}</td>
                 <td className="px-6 py-4 text-on-surface-variant">{statusLabel(t.status)}</td>
                 <td className="px-6 py-4 text-on-surface-variant">{priorityLabel(t.priority)}</td>
                 <td className="px-6 py-4 text-on-surface-variant">{formatDate(t.updated_at)}</td>
+                {isAdmin ? (
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteError(null)
+                        setDeleteTarget({ id: t.id, title: t.title })
+                      }}
+                      className="text-xs font-semibold text-red-300 hover:text-red-200 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

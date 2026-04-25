@@ -9,6 +9,7 @@ import AgentDashboardPage from '../features/dashboard/pages/AgentDashboardPage'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import SettingsPage from '../features/settings/pages/SettingsPage'
 import AppLayout from '../features/shell/components/AppLayout'
+import TicketDetailPage from '../features/tickets/pages/TicketDetailPage'
 import TicketsPage from '../features/tickets/pages/TicketsPage'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
               </RoleRoute>
             }
           />
+          <Route path="/tickets/:ticketId" element={<TicketDetailPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route
             path="/agentes"

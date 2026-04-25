@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 from app.services import auth_service
 
 
-def post_login(body: dict[str, Any] | None, _query: dict[str, str]) -> tuple[int, dict]:
+def post_refresh(body: dict[str, Any] | None, _query: dict[str, str], _headers: Mapping[str, str]) -> tuple[int, dict]:
+    return auth_service.refresh_session(body)
+
+
+def post_login(body: dict[str, Any] | None, _query: dict[str, str], _headers: Mapping[str, str]) -> tuple[int, dict]:
     """
     POST /auth/login o POST /api/auth/login/
     Frontend: {"user_name": "...", "password": "..."} (user_name suele ser el email).
