@@ -15,7 +15,7 @@ def _row_to_comment(row: tuple[Any, ...]) -> TicketComment:
     return TicketComment(
         id=int(cid),
         ticket_id=int(tid),
-        user_id=int(uid),
+        user_id=int(uid) if uid is not None else None,
         body=str(body),
         created_at=created_at,
     )
@@ -37,13 +37,14 @@ def list_by_ticket(conn: PGConnection, ticket_id: int) -> list[TicketComment]:
 
 
 def list_by_ticket_with_author_email(conn: PGConnection, ticket_id: int) -> list[tuple[TicketComment, str]]:
-    """Cada fila: (TicketComment, email del autor)."""
+    """Cada fila: (TicketComment, email o nombre mostrable del autor)."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT c.id, c.ticket_id, c.user_id, c.body, c.created_at, u.email
+            SELECT c.id, c.ticket_id, c.user_id, c.body, c.created_at,
+                   COALESCE(u.email, c.author_email, '(correo)') AS author_display
             FROM ticket_comments c
-            INNER JOIN users u ON u.id = c.user_id
+            LEFT JOIN users u ON u.id = c.user_id
             WHERE c.ticket_id = %s
             ORDER BY c.created_at ASC, c.id ASC
             """,
@@ -56,7 +57,7 @@ def list_by_ticket_with_author_email(conn: PGConnection, ticket_id: int) -> list
         c = TicketComment(
             id=int(cid),
             ticket_id=int(tid),
-            user_id=int(uid),
+            user_id=int(uid) if uid is not None else None,
             body=str(body),
             created_at=created_at,
         )
@@ -83,4 +84,27 @@ def insert(
         row = cur.fetchone()
     if row is None:
         raise RuntimeError("INSERT ticket_comments no devolvió fila")
+    return _row_to_comment(row)
+
+
+def insert_from_email(
+    conn: PGConnection,
+    *,
+    ticket_id: int,
+    body: str,
+    message_id: str,
+    author_email: str,
+) -> TicketComment:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO ticket_comments (ticket_id, user_id, body, message_id, author_email)
+            VALUES (%s, NULL, %s, %s, %s)
+            RETURNING id, ticket_id, user_id, body, created_at
+            """,
+            (ticket_id, body, message_id, author_email.strip().lower()),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise RuntimeError("INSERT ticket_comments (email) no devolvió fila")
     return _row_to_comment(row)

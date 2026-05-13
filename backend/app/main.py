@@ -1,17 +1,16 @@
 """
-Servidor HTTP con biblioteca estándar.
+API HTTP con Flask.
 Ejecutar desde la carpeta `backend`:  python main.py
 (o: python -m app.main  con PYTHONPATH apuntando a backend)
 """
 
 from __future__ import annotations
 
-import json
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Mapping
-from urllib.parse import parse_qs, urlparse
+
+from flask import Flask, Response, jsonify, request
 
 # Permite ejecutar `python app/main.py` desde la carpeta backend.
 if __package__ in (None, ""):
@@ -19,104 +18,92 @@ if __package__ in (None, ""):
     if str(_backend_root) not in sys.path:
         sys.path.insert(0, str(_backend_root))
 
+from app.email.config import max_payload_bytes
+from app.request_parse import ParseBodyError, parse_body_for_dispatch
 from app.router import dispatch
-from app.utils.response import json_body, merge_headers
+from app.utils.response import BinaryPayload, cors_headers
 
 
-def _flat_query(query_string: str) -> dict[str, str]:
-    if not query_string:
-        return {}
-    out: dict[str, str] = {}
-    for key, values in parse_qs(query_string).items():
-        if values:
-            out[key] = values[0]
-    return out
+def _flat_query_args() -> dict[str, str]:
+    return {k: (request.args.get(k) or "") for k in request.args}
 
 
-def _headers_dict(handler: BaseHTTPRequestHandler) -> Mapping[str, str]:
-    return {str(k): str(v) for k, v in handler.headers.items()}
+def _headers_mapping() -> Mapping[str, str]:
+    return {str(k): str(v) for k, v in request.headers.items()}
 
 
-class _RestHandler(BaseHTTPRequestHandler):
-    server_version = "HelpdeskAPI/0.1"
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.json.ensure_ascii = False
+    app.config["MAX_CONTENT_LENGTH"] = max_payload_bytes()
 
-    def log_message(self, format: str, *args) -> None:
-        print(f"[{self.address_string()}] {format % args}")
+    @app.errorhandler(413)
+    def _payload_too_large(_e: object) -> tuple[Response, int]:
+        return jsonify({"error": "Cuerpo demasiado grande"}), 413
 
-    def _write_response(self, status: int, payload: dict) -> None:
-        body = json_body(payload)
-        self.send_response(status)
-        for k, v in merge_headers({"Content-Length": str(len(body))}).items():
-            self.send_header(k, v)
-        self.end_headers()
-        self.wfile.write(body)
+    @app.after_request
+    def _add_cors(response: Response) -> Response:
+        for k, v in cors_headers().items():
+            if k not in response.headers:
+                response.headers[k] = v
+        return response
 
-    def _read_json_body_required(self) -> dict | None:
-        """Lee JSON cuando Content-Length > 0. Devuelve None si ya respondió 400."""
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        raw = self.rfile.read(length) if length > 0 else b""
-        if not raw:
-            return {}
-        try:
-            loaded = json.loads(raw.decode("utf-8"))
-            if loaded is not None and not isinstance(loaded, dict):
-                self._write_response(400, {"error": "El cuerpo debe ser un objeto JSON"})
-                return None
-            return loaded
-        except json.JSONDecodeError:
-            self._write_response(400, {"error": "JSON inválido o mal formado"})
-            return None
+    def _json_response(status: int, payload: dict) -> Response:
+        r = jsonify(payload)
+        r.status_code = status
+        return r
 
-    def do_OPTIONS(self) -> None:
-        self.send_response(204)
-        for k, v in merge_headers().items():
-            self.send_header(k, v)
-        self.end_headers()
+    def _binary_response(status: int, bp: BinaryPayload) -> Response:
+        r = Response(bp.body, status=status, mimetype=bp.content_type)
+        r.headers["Content-Length"] = str(len(bp.body))
+        r.headers["Content-Disposition"] = f'attachment; filename="{bp.filename.replace(chr(34), "")}"'
+        return r
 
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        q = _flat_query(parsed.query)
-        status, body = dispatch("GET", parsed.path, None, q, _headers_dict(self))
-        self._write_response(status, body)
+    def _handle_dispatch(**_view_args: object) -> Response:
+        if request.method == "OPTIONS":
+            return Response(status=204)
 
-    def do_POST(self) -> None:
-        parsed_url = urlparse(self.path)
-        q = _flat_query(parsed_url.query)
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        if length == 0:
-            body_json: dict | None = None
+        method = request.method
+        path = request.path
+        q = _flat_query_args()
+        h = _headers_mapping()
+
+        body_in: dict | None = None
+        if method == "GET" or method == "DELETE":
+            body_in = None
+        elif method in ("POST", "PATCH"):
+            raw = request.get_data(cache=True)
+            try:
+                body_in = parse_body_for_dispatch(method, raw, request.headers.get("Content-Type"))
+            except ParseBodyError as e:
+                return _json_response(e.status, e.payload)
         else:
-            body_json = self._read_json_body_required()
-            if body_json is None:
-                return
+            return _json_response(405, {"error": "Método no permitido"})
 
-        status, body = dispatch("POST", parsed_url.path, body_json, q, _headers_dict(self))
-        self._write_response(status, body)
+        status, body = dispatch(method, path, body_in, q, h)
+        if isinstance(body, BinaryPayload):
+            return _binary_response(status, body)
+        return _json_response(status, body)
 
-    def do_PATCH(self) -> None:
-        parsed_url = urlparse(self.path)
-        q = _flat_query(parsed_url.query)
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        if length == 0:
-            body_json = {}
-        else:
-            body_json = self._read_json_body_required()
-            if body_json is None:
-                return
+    app.add_url_rule(
+        "/",
+        endpoint="dispatch_root",
+        view_func=_handle_dispatch,
+        methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    )
+    app.add_url_rule(
+        "/<path:subpath>",
+        endpoint="dispatch_subpath",
+        view_func=_handle_dispatch,
+        methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    )
 
-        status, body = dispatch("PATCH", parsed_url.path, body_json, q, _headers_dict(self))
-        self._write_response(status, body)
-
-    def do_DELETE(self) -> None:
-        parsed = urlparse(self.path)
-        q = _flat_query(parsed.query)
-        status, body = dispatch("DELETE", parsed.path, None, q, _headers_dict(self))
-        self._write_response(status, body)
+    return app
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
-    server = HTTPServer((host, port), _RestHandler)
-    print(f"Servidor escuchando en http://{host}:{port}")
+    app = create_app()
+    print(f"Servidor Flask en http://{host}:{port}")
     print("  POST /api/auth/login/     — login")
     print("  POST /api/auth/refresh/   — renovar access")
     print("  GET  /api/tickets/        — listado tickets")
@@ -124,12 +111,12 @@ def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     print("  GET  /api/tickets/{{id}}  — detalle")
     print("  PATCH /api/tickets/{{id}} — actualizar")
     print("  GET  /api/agents/         — agentes (admin)")
+    print("  GET  /api/attachments/{{id}} — descargar adjunto")
     print("  GET  /health              — comprobación")
     try:
-        server.serve_forever()
+        app.run(host=host, port=port, threaded=True, use_reloader=False)
     except KeyboardInterrupt:
         print("\nDeteniendo servidor…")
-        server.shutdown()
 
 
 if __name__ == "__main__":

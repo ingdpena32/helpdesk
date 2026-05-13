@@ -5,13 +5,17 @@ Sin lógica de negocio ni SQL.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Callable, Mapping
-from urllib.parse import urlparse
 
-from app.controllers import agent_controller, auth_controller, ticket_controller
+from app.controllers import agent_controller, attachment_controller, auth_controller, ticket_controller
 from app.utils.http_path import canonical_api_path, normalize_path as norm_path
+from app.utils.response import BinaryPayload
 
 Handler = Callable[[dict[str, Any] | None, dict[str, str], Mapping[str, str]], tuple[int, dict]]
+
+_ATTACH_RE = re.compile(r"^/api/attachments/(\d+)$")
+_TICK_ATTACH_RE = re.compile(r"^/api/tickets/(\d+)/attachments$")
 
 
 def get_health(
@@ -32,22 +36,6 @@ _ROUTES: dict[tuple[str, str], Handler] = {
 }
 
 
-def _is_tickets_collection(path: str) -> bool:
-    """True si es la colección de tickets (tras canonical_api_path → siempre /api/tickets)."""
-    raw = (path or "").strip().replace("\x00", "").replace("\r", "").lstrip("\ufeff")
-    if raw.lower().startswith(("http://", "https://")):
-        raw = urlparse(raw.replace("\\", "/")).path or "/"
-    else:
-        raw = raw.split("?", 1)[0]
-    raw = raw.replace("\\", "/")
-    while "//" in raw:
-        raw = raw.replace("//", "/")
-    if not raw.startswith("/"):
-        raw = "/" + raw
-    raw = canonical_api_path(raw)
-    return raw == "/api/tickets"
-
-
 def normalize_path(path: str) -> str:
     """Delegación al util común (mantiene nombre exportado para compatibilidad)."""
     return norm_path(path)
@@ -59,14 +47,22 @@ def dispatch(
     json_body: dict[str, Any] | None,
     query: dict[str, str] | None = None,
     headers: Mapping[str, str] | None = None,
-) -> tuple[int, dict]:
+) -> tuple[int, dict[str, Any] | BinaryPayload]:
     m = method.upper()
     q = query if query is not None else {}
     h: Mapping[str, str] = headers if headers is not None else {}
 
     path = canonical_api_path(path)
 
-    if _is_tickets_collection(path):
+    if m == "GET":
+        ma = _ATTACH_RE.match(path)
+        if ma:
+            return attachment_controller.get_attachment_download(json_body, q, h, int(ma.group(1)))
+        mt = _TICK_ATTACH_RE.match(path)
+        if mt:
+            return attachment_controller.get_ticket_attachments_list(json_body, q, h, int(mt.group(1)))
+
+    if path == "/api/tickets":
         if m == "POST":
             return ticket_controller.post_create(json_body, q, h)
         if m == "GET":

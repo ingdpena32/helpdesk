@@ -59,9 +59,9 @@ def match_ticket_subresource(
 ) -> tuple[str, int] | None:
     """
     Si el path corresponde a un subrecurso de ticket, devuelve (acción, ticket_id).
+    `path` debe estar ya canonicalizado (p. ej. tras `canonical_api_path` en el router).
     """
-    p = canonical_api_path(path)
-    p = normalize_path(p)
+    p = normalize_path(canonical_api_path(path))
     m = _TICKET_ID_RE.match(p)
     if m:
         tid = int(m.group(1))

@@ -7,7 +7,7 @@ from typing import Any, Mapping
 
 from app.database.db import get_connection
 from app.models.ticket import Ticket
-from app.repositories import ticket_comment_repository, ticket_repository, user_repository
+from app.repositories import ticket_attachment_repository, ticket_comment_repository, ticket_repository, user_repository
 from app.services import auth_service
 
 ALLOWED_CATEGORIES: frozenset[str] = frozenset(
@@ -194,10 +194,25 @@ def get_ticket(headers: Mapping[str, str], ticket_id: int) -> tuple[int, dict]:
             ticket = ticket_repository.find_by_id(conn, ticket_id)
             if ticket is None:
                 return 404, {"error": "Ticket no encontrado"}
+
+            atts = ticket_attachment_repository.list_by_ticket(conn, ticket_id)
+            att_json = [
+                {
+                    "id": a.id,
+                    "original_filename": a.original_filename,
+                    "mime_type": a.mime_type,
+                    "size_bytes": a.size_bytes,
+                    "download_url": f"/api/attachments/{a.id}",
+                    "comment_id": a.comment_id,
+                }
+                for a in atts
+            ]
     except Exception:
         return 500, {"error": "No se pudo obtener el ticket."}
 
-    return 200, _ticket_to_json(ticket)
+    out = _ticket_to_json(ticket)
+    out["attachments"] = att_json
+    return 200, out
 
 
 def _is_admin(role: str) -> bool:

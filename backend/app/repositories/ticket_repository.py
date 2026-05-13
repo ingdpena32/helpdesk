@@ -221,3 +221,61 @@ def soft_delete(conn: PGConnection, ticket_id: int) -> str:
     if exists is None:
         return "not_found"
     return "already_deleted"
+
+
+def find_ticket_id_by_message_reference(conn: PGConnection, message_id: str) -> int | None:
+    """Resuelve ticket por Message-ID en el hilo (ticket raíz o comentario previo)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id FROM tickets
+            WHERE email_message_id = %s AND deleted_at IS NULL
+            LIMIT 1
+            """,
+            (message_id,),
+        )
+        row = cur.fetchone()
+        if row is not None:
+            return int(row[0])
+        cur.execute(
+            """
+            SELECT ticket_id FROM ticket_comments
+            WHERE message_id = %s
+            LIMIT 1
+            """,
+            (message_id,),
+        )
+        row = cur.fetchone()
+        if row is not None:
+            return int(row[0])
+    return None
+
+
+def insert_from_inbound(
+    conn: PGConnection,
+    *,
+    title: str,
+    description: str,
+    created_by: int,
+    priority: str,
+    category: str,
+    email_message_id: str | None,
+) -> Ticket:
+    """Ticket creado desde correo (Message-ID raíz opcional)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO tickets (
+                title, description, created_by, priority, category, email_message_id
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING
+                id, title, description, created_by, priority, category, status,
+                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+            """,
+            (title, description, created_by, priority, category, email_message_id),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise RuntimeError("INSERT inbound no devolvió fila")
+    return _row_to_ticket(row)

@@ -18,6 +18,15 @@ export const TICKET_CATEGORIES: { value: TicketCategory; label: string }[] = [
   { value: 'Desarrollo', label: 'Desarrollo' },
 ]
 
+export type TicketAttachmentMeta = {
+  id: number
+  original_filename: string
+  mime_type: string
+  size_bytes: number
+  download_url: string
+  comment_id: number | null
+}
+
 export type Ticket = {
   id: number
   title: string
@@ -34,6 +43,7 @@ export type Ticket = {
   assigned_to: number | null
   created_by?: number
   resolution?: string | null
+  attachments?: TicketAttachmentMeta[]
 }
 
 export type TicketFilters = {
@@ -60,7 +70,7 @@ export type PatchTicketPayload = {
 
 export type TicketComment = {
   id: number
-  user_id: number
+  user_id: number | null
   username: string
   content: string
   created_at: string

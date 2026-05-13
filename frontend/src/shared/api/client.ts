@@ -117,3 +117,28 @@ export async function apiPut<T>(path: string, body: unknown, init?: ApiRequestIn
 export async function apiDelete(path: string, init?: ApiRequestInit): Promise<void> {
   await request<void>(path, { method: 'DELETE', ...init })
 }
+
+/** Descarga binaria con Authorization (adjuntos). */
+export async function apiGetBlob(path: string, init?: ApiRequestInit): Promise<Blob> {
+  const { auth = true, _retry = false, ...rest } = init ?? {}
+  const headers = buildHeaders(rest.headers, auth)
+
+  const res = await fetch(joinUrl(path), { credentials: 'include', ...rest, headers })
+
+  if (res.status === 401 && auth && !_retry) {
+    const newToken = await tryRefreshToken()
+    if (newToken) {
+      return apiGetBlob(path, { ...init, _retry: true })
+    }
+    clearSession()
+    window.location.href = '/login'
+    throw new ApiError(401, 'Sesión expirada')
+  }
+
+  if (!res.ok) {
+    const body = await res.text()
+    throw new ApiError(res.status, body || res.statusText)
+  }
+
+  return res.blob()
+}

@@ -6,7 +6,7 @@ from urllib.parse import unquote, urlparse
 
 
 def normalize_path(path: str) -> str:
-    p = (path or "").strip()
+    p = (path or "").strip().replace("\x00", "").replace("\r", "").lstrip("\ufeff")
     if p.lower().startswith(("http://", "https://")):
         p = urlparse(p).path or "/"
     else:
@@ -37,5 +37,7 @@ def canonical_api_path(path: str) -> str:
             continue
         break
     if p == "/tickets" or p.startswith("/tickets/"):
+        p = "/api" + p
+    if p.startswith("/attachments"):
         p = "/api" + p
     return normalize_path(p)

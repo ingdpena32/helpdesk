@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, apiGetBlob } from '../../../shared/api/client'
 import { useAuth } from '../../auth/context/AuthContext'
 import { listAgents } from '../../agents/services/agentsApi'
 import DeleteTicketConfirmModal from '../components/DeleteTicketConfirmModal'
@@ -89,6 +89,7 @@ export default function TicketDetailPage() {
   const [commentError, setCommentError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const isAdmin = user?.role === 'admin'
 
@@ -185,6 +186,25 @@ export default function TicketDetailPage() {
 
   const comments: TicketComment[] = commentsQuery.data?.results ?? []
 
+  async function handleDownloadAttachment(downloadUrl: string, filename: string, attId: number) {
+    try {
+      setDownloadingId(attId)
+      const blob = await apiGetBlob(downloadUrl)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      /* descarga fallida */
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   return (
     <section className="space-y-10">
       <DeleteTicketConfirmModal
@@ -265,8 +285,30 @@ export default function TicketDetailPage() {
               </dl>
             </div>
 
+            {ticket.attachments && ticket.attachments.length > 0 ? (
+              <div className="dashboard-panel p-6">
+                <h3 className="font-architectural text-lg font-bold text-on-surface">Adjuntos</h3>
+                <ul className="mt-4 space-y-2">
+                  {ticket.attachments.map((a) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        disabled={downloadingId === a.id}
+                        onClick={() => handleDownloadAttachment(a.download_url, a.original_filename, a.id)}
+                        className="text-left text-sm font-medium text-primary hover:underline disabled:opacity-50"
+                      >
+                        {downloadingId === a.id ? 'Descargando…' : `${a.original_filename} (${(a.size_bytes / 1024).toFixed(1)} KB)`}
+                      </button>
+                      {a.comment_id != null ? (
+                        <span className="ml-2 text-xs text-on-surface-variant">· en comentario #{a.comment_id}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <div className="dashboard-panel p-6">
-              <h3 className="font-architectural text-lg font-bold text-on-surface">Comentarios</h3>
               {commentsQuery.isLoading ? (
                 <p className="mt-4 text-sm text-on-surface-variant">Cargando comentarios…</p>
               ) : null}
