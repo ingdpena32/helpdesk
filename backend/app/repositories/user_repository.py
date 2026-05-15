@@ -107,3 +107,32 @@ def list_agents_with_workload(conn: PGConnection) -> list[tuple[User, int]]:
         u = User(id=int(uid), email=str(em), password_hash=str(ph) if ph is not None else "", role=str(role))
         out.append((u, int(workload)))
     return out
+
+
+def list_admin_and_agent_user_ids(
+    conn: PGConnection,
+    *,
+    exclude_user_ids: set[int] | None = None,
+    exclude_email_lower: str | None = None,
+) -> list[int]:
+    """IDs de usuarios admin o agente (para fan-out de notificaciones)."""
+    ex = exclude_user_ids or set()
+    skip_email = (exclude_email_lower or "").strip().lower()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, email FROM users
+            WHERE LOWER(TRIM(role)) IN ('admin', 'agent')
+            ORDER BY id
+            """
+        )
+        rows = cur.fetchall()
+    out: list[int] = []
+    for uid, em in rows:
+        i = int(uid)
+        if i in ex:
+            continue
+        if skip_email and str(em).strip().lower() == skip_email:
+            continue
+        out.append(i)
+    return out

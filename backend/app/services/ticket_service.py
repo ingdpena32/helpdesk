@@ -8,7 +8,7 @@ from typing import Any, Mapping
 from app.database.db import get_connection
 from app.models.ticket import Ticket
 from app.repositories import ticket_attachment_repository, ticket_comment_repository, ticket_repository, user_repository
-from app.services import auth_service
+from app.services import auth_service, notification_service
 
 ALLOWED_CATEGORIES: frozenset[str] = frozenset(
     {
@@ -53,6 +53,9 @@ def _ticket_to_json(t: Ticket) -> dict[str, Any]:
         "assigned_to": t.assigned_to,
         "resolution": t.resolution,
         "closed_at": t.closed_at.isoformat() if t.closed_at else None,
+        "sender_name": t.sender_name,
+        "sender_email": t.sender_email,
+        "sender_user_id": t.sender_user_id,
     }
 
 
@@ -103,6 +106,7 @@ def create_from_request(headers: Mapping[str, str], body: dict[str, Any]) -> tup
                 priority=priority_canon,
                 category=category_clean,
             )
+            notification_service.notify_ticket_created_manual(conn, ticket, exclude_user_id=actor.id)
             conn.commit()
     except Exception:
         return 500, {"error": "No se pudo crear el ticket. Intente más tarde."}
@@ -315,6 +319,7 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
             else:
                 closed_at = None
 
+            prev_assigned = ticket.assigned_to
             updated = ticket_repository.update_fields(
                 conn,
                 ticket_id,
@@ -326,6 +331,11 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
             if updated is None:
                 conn.rollback()
                 return 404, {"error": "Ticket no encontrado"}
+
+            if new_assigned != prev_assigned and new_assigned is not None:
+                notification_service.notify_ticket_assigned(
+                    conn, assignee_id=new_assigned, ticket=updated
+                )
 
             conn.commit()
     except Exception:
@@ -386,6 +396,11 @@ def add_comment(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any]
                 return 404, {"error": "Ticket no encontrado"}
 
             c = ticket_comment_repository.insert(conn, ticket_id=ticket_id, user_id=user.id, body=text)
+            t = ticket_repository.find_by_id(conn, ticket_id)
+            if t is not None:
+                notification_service.notify_ticket_comment_for_assignee(
+                    conn, ticket=t, author_user_id=user.id, preview=text
+                )
             conn.commit()
     except Exception:
         return 500, {"error": "No se pudo crear el comentario."}

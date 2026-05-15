@@ -43,6 +43,10 @@ export type Ticket = {
   assigned_to: number | null
   created_by?: number
   resolution?: string | null
+  /** Ingesta por correo (null si ticket manual o legado sin datos). */
+  sender_name?: string | null
+  sender_email?: string | null
+  sender_user_id?: number | null
   attachments?: TicketAttachmentMeta[]
 }
 

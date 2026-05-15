@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import logging
 import re
 import secrets
 import time
@@ -33,6 +34,9 @@ from app.repositories import (
     ticket_repository,
     user_repository,
 )
+from app.services import notification_service
+
+logger = logging.getLogger(__name__)
 
 
 def _mime_allowed(mime: str) -> bool:
@@ -138,8 +142,8 @@ def _process_parsed(
     body = parsed.body_text.strip() or "(sin cuerpo)"
     title = (parsed.subject or "(sin asunto)")[:500]
 
-    if not _domain_allowed(parsed.from_email):
-        raise PermissionError(f"Dominio no permitido: {parsed.from_email}")
+    if not _domain_allowed(parsed.sender_email or parsed.from_email):
+        raise PermissionError(f"Dominio no permitido: {parsed.sender_email or parsed.from_email}")
 
     parent_tid = _find_parent_ticket_id(conn, parsed)
     if parsed.in_reply_to and parent_tid is None:
@@ -154,12 +158,26 @@ def _process_parsed(
             ticket_id=parent_tid,
             body=body,
             message_id=mid,
-            author_email=parsed.from_email,
+            author_email=parsed.sender_email or parsed.from_email,
         )
         tid = parent_tid
         last_comment_id = comment.id
         mode = "comment"
     else:
+        sender_user_id: int | None = None
+        se = (parsed.sender_email or parsed.from_email or "").strip().lower()
+        if se:
+            u_match = user_repository.find_by_email(conn, se)
+            if u_match is not None:
+                sender_user_id = u_match.id
+                logger.info(
+                    "Ticket por correo: remitente coincide con usuario id=%s email=%s",
+                    sender_user_id,
+                    se,
+                )
+            else:
+                logger.info("Ticket por correo: remitente externo email=%s", se)
+
         t = ticket_repository.insert_from_inbound(
             conn,
             title=title,
@@ -168,6 +186,16 @@ def _process_parsed(
             priority="medium",
             category="Soporte técnico",
             email_message_id=mid,
+            sender_name=(parsed.sender_name or "").strip() or None,
+            sender_email=se or None,
+            raw_from=parsed.raw_from,
+            sender_user_id=sender_user_id,
+        )
+        logger.info(
+            "Ticket #%s creado desde correo message_id=%s raw_from_len=%s",
+            t.id,
+            mid,
+            len(parsed.raw_from or ""),
         )
         tid = t.id
         last_comment_id = None
@@ -205,17 +233,46 @@ def process_one_event(conn, event: dict, *, system_user_id: int, attachments_roo
     if raw_bytes:
         parsed = parse_from_payload({})
         parsed = enrich_from_raw_mime(parsed, raw_bytes)
+        logger.info(
+            "Evento %s: MIME parseado subject=%r sender_email=%r message_id=%s",
+            eid,
+            (parsed.subject or "")[:80],
+            parsed.sender_email or parsed.from_email,
+            parsed.message_id,
+        )
     else:
         parsed = parse_from_payload(payload)
+        logger.info(
+            "Evento %s: payload parseado sender_email=%r message_id=%s",
+            eid,
+            parsed.sender_email or parsed.from_email,
+            parsed.message_id,
+        )
 
     if not parsed.message_id:
         raise ValueError("No se pudo determinar Message-ID")
 
     try:
-        _process_parsed(conn, parsed=parsed, system_user_id=system_user_id, attachments_root=attachments_root)
+        mode, tid = _process_parsed(
+            conn, parsed=parsed, system_user_id=system_user_id, attachments_root=attachments_root
+        )
+        t = ticket_repository.find_by_id(conn, tid)
+        if t is not None:
+            if mode == "ticket":
+                notification_service.notify_ticket_created_email(conn, t)
+            elif mode == "comment":
+                preview = (parsed.body_text or "").strip() or "(sin cuerpo)"
+                notification_service.notify_ticket_comment_for_assignee(
+                    conn, ticket=t, author_user_id=None, preview=preview
+                )
     except LookupError as e:
         if str(e) == "duplicate_message_id":
             ingestion_repository.mark_duplicate(conn, eid)
+            logger.info(
+                "Evento %s ignorado: Message-ID ya procesado (%s)",
+                eid,
+                parsed.message_id,
+            )
             return
         raise
 
@@ -273,4 +330,8 @@ def run_loop() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     run_loop()

@@ -275,6 +275,32 @@ export default function TicketDetailPage() {
                   <dd className="mt-1 text-on-surface">{ticket.category ?? '—'}</dd>
                 </div>
                 <div>
+                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Remitente (correo)
+                  </dt>
+                  <dd className="mt-1 text-on-surface">
+                    {ticket.sender_email?.trim() || ticket.sender_name?.trim() ? (
+                      <>
+                        <span className="block font-medium">
+                          {ticket.sender_name?.trim() ? ticket.sender_name : '—'}
+                        </span>
+                        <span className="mt-0.5 block text-sm text-on-surface-variant">
+                          {ticket.sender_email ?? '—'}
+                        </span>
+                        {ticket.sender_user_id != null ? (
+                          <span className="mt-1 block text-xs text-on-surface-variant">
+                            Usuario registrado (#{ticket.sender_user_id})
+                          </span>
+                        ) : ticket.sender_email ? (
+                          <span className="mt-1 block text-xs text-on-surface-variant">Remitente externo</span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="text-on-surface-variant">Sin datos de correo (web o legado)</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Creador (id)</dt>
                   <dd className="mt-1 text-on-surface">{ticket.created_by ?? '—'}</dd>
                 </div>

@@ -4,6 +4,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../auth/types/auth.types'
 import { useAuth } from '../../auth/context/AuthContext'
 import NewTicketModal from '../../tickets/components/NewTicketModal'
+import NotificationCenter from '../../notifications/components/NotificationCenter'
 
 type NavItem = { to: string; icon: string; label: string; roles: UserRole[] }
 
@@ -90,7 +91,7 @@ function AppLayout() {
         </div>
       </aside>
 
-      <header className="fixed left-64 right-0 top-0 z-20 flex h-16 items-center justify-between gap-6 border-b border-white/5 bg-surface/90 px-8 py-3 backdrop-blur-xl">
+      <header className="fixed left-64 right-0 top-0 z-40 flex h-16 items-center justify-between gap-6 overflow-visible border-b border-white/5 bg-surface/90 px-8 py-3 backdrop-blur-xl">
         <div className="flex max-w-xl flex-1 items-center gap-3 rounded-full border border-white/10 bg-surface-container/40 px-4 py-2 shadow-inner shadow-black/20 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20">
           <span className="material-symbols-outlined text-on-surface-variant">search</span>
           <input
@@ -101,9 +102,7 @@ function AppLayout() {
         </div>
 
         <div className="flex shrink-0 items-center gap-5 text-on-surface-variant">
-          <button type="button" className="rounded-lg p-1.5 transition-colors hover:bg-white/5 hover:text-on-surface">
-            <span className="material-symbols-outlined text-[22px]">notifications</span>
-          </button>
+          <NotificationCenter />
           <button type="button" className="rounded-lg p-1.5 transition-colors hover:bg-white/5 hover:text-on-surface">
             <span className="material-symbols-outlined text-[22px]">help_outline</span>
           </button>

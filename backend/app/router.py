@@ -8,7 +8,13 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Mapping
 
-from app.controllers import agent_controller, attachment_controller, auth_controller, ticket_controller
+from app.controllers import (
+    agent_controller,
+    attachment_controller,
+    auth_controller,
+    notification_controller,
+    ticket_controller,
+)
 from app.utils.http_path import canonical_api_path, normalize_path as norm_path
 from app.utils.response import BinaryPayload
 
@@ -53,6 +59,23 @@ def dispatch(
     h: Mapping[str, str] = headers if headers is not None else {}
 
     path = canonical_api_path(path)
+
+    np = normalize_path(path)
+
+    if m == "GET" and np == "/api/notifications/unread-count":
+        return notification_controller.get_unread_count(json_body, q, h)
+
+    if m == "GET" and np == "/api/notifications":
+        return notification_controller.get_list(json_body, q, h)
+
+    if m == "PATCH":
+        if np == "/api/notifications/read-all":
+            return notification_controller.patch_read_all(json_body, q, h)
+        _notif_read = re.match(r"^/api/notifications/(\d+)/read$", np)
+        if _notif_read:
+            return notification_controller.patch_read_one(
+                json_body, q, h, int(_notif_read.group(1))
+            )
 
     if m == "GET":
         ma = _ATTACH_RE.match(path)

@@ -5,10 +5,16 @@ from __future__ import annotations
 import base64
 import binascii
 import email.policy
+import logging
 import re
 from dataclasses import dataclass, field
 from email import message_from_bytes
+from email.utils import parseaddr
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+MAX_RAW_FROM_LEN = 2048
 
 
 def message_id_from_raw_mime(blob: bytes) -> str | None:
@@ -43,6 +49,39 @@ def normalize_message_id(raw: str | None) -> str | None:
     return s or None
 
 
+def extract_from_identity(from_header_value: str | None) -> tuple[str, str, str | None]:
+    """
+    Parsea la cabecera From con email.utils.parseaddr.
+
+    Devuelve (sender_name, sender_email_lower, raw_from_truncado).
+    Si parseaddr no obtiene dirección, se intenta el mismo heurístico que antes (_first_email_from_sender).
+    """
+    if from_header_value is None:
+        return "", "", None
+    raw = str(from_header_value).strip()
+    if not raw:
+        return "", "", None
+    raw_stored = raw if len(raw) <= MAX_RAW_FROM_LEN else raw[:MAX_RAW_FROM_LEN]
+    try:
+        name, addr = parseaddr(raw)
+    except Exception as ex:
+        logger.warning(
+            "parseaddr falló (%s); cabecera From (recorte): %r",
+            ex,
+            raw[:160],
+        )
+        name, addr = "", ""
+    name_clean = (name or "").strip()
+    email_clean = (addr or "").strip().lower()
+    if not email_clean:
+        email_clean = _first_email_from_sender(raw).strip().lower()
+    if email_clean:
+        logger.debug("From parseado: nombre=%r email=%r", name_clean, email_clean)
+    else:
+        logger.warning("No se pudo extraer email del From (recorte): %r", raw[:200])
+    return name_clean, email_clean, raw_stored
+
+
 @dataclass
 class AttachmentPart:
     filename: str
@@ -59,10 +98,13 @@ class ParsedInbound:
     body_text: str
     references: str | None = None
     attachments: list[AttachmentPart] = field(default_factory=list)
+    sender_name: str = ""
+    sender_email: str = ""
+    raw_from: str | None = None
 
 
 def _first_email_from_sender(sender: str) -> str:
-    """Extrae dirección de 'Nombre <a@b.com>' o 'a@b.com'."""
+    """Extrae dirección de 'Nombre <a@b.com>' o 'a@b.com' (respaldo si parseaddr deja vacío)."""
     s = (sender or "").strip()
     if "<" in s and ">" in s:
         inner = s[s.find("<") + 1 : s.find(">")]
@@ -119,7 +161,10 @@ def parse_from_payload(payload: dict[str, Any]) -> ParsedInbound:
     """JSON genérico (campos planos tipo webhook) o payload mínimo antes de enriquecer con MIME."""
     subject = str(payload.get("subject") or "(sin asunto)")[:500]
     sender = payload.get("sender") or payload.get("from") or ""
-    from_email = _first_email_from_sender(str(sender))
+    raw_sender = str(sender).strip() if sender else ""
+    sender_name, sender_email, raw_from = extract_from_identity(raw_sender or None)
+    if raw_from is None and raw_sender:
+        raw_from = raw_sender if len(raw_sender) <= MAX_RAW_FROM_LEN else raw_sender[:MAX_RAW_FROM_LEN]
 
     mid = normalize_message_id(
         payload.get("Message-Id")
@@ -146,12 +191,15 @@ def parse_from_payload(payload: dict[str, Any]) -> ParsedInbound:
 
     return ParsedInbound(
         subject=subject,
-        from_email=from_email,
+        from_email=sender_email,
         message_id=mid,
         in_reply_to=irt,
         body_text=body_text[:100_000],
         references=references,
         attachments=att,
+        sender_name=sender_name,
+        sender_email=sender_email,
+        raw_from=raw_from,
     )
 
 
@@ -182,7 +230,8 @@ def enrich_from_raw_mime(parsed: ParsedInbound, raw_bytes: bytes) -> ParsedInbou
     """Si hay MIME completo, sobreescribe cabeceras con las del mensaje parseado."""
     try:
         msg = message_from_bytes(raw_bytes, policy=email.policy.default)
-    except Exception:
+    except Exception as ex:
+        logger.warning("No se pudo interpretar MIME: %s", ex)
         return parsed
 
     subj = msg.get("Subject")
@@ -190,8 +239,15 @@ def enrich_from_raw_mime(parsed: ParsedInbound, raw_bytes: bytes) -> ParsedInbou
         parsed.subject = str(subj)[:500]
 
     frm = msg.get("From")
-    if frm:
-        parsed.from_email = _first_email_from_sender(str(frm))
+    if frm is not None:
+        raw_f = str(frm).strip()
+        sn, se, rr = extract_from_identity(raw_f)
+        parsed.sender_name = sn
+        parsed.sender_email = se
+        parsed.from_email = se
+        parsed.raw_from = rr
+        if not se:
+            logger.warning("MIME sin dirección en From tras parseaddr; recorte cabecera: %r", raw_f[:200])
 
     mid = normalize_message_id(msg.get("Message-ID") or msg.get("Message-Id"))
     if mid:

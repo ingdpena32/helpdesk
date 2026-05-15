@@ -6,7 +6,8 @@
 --   1_create_sessions_table.sql, 2_add_deleted_at_to_tickets.sql,
 --   2_create_ticket_comments.sql, 3_add_users_password_hash_column.sql,
 --   4_backfill_admin_password_hash.sql, 5_drop_users_password_column.sql,
---   6_seed_agent_user.sql, 7_email_ingestion.sql
+--   6_seed_agent_user.sql, 7_email_ingestion.sql, 8_notifications.sql,
+--   9_ticket_email_sender.sql
 --
 -- Uso: crear una base vacía (p. ej. CREATE DATABASE helpdesk;) y ejecutar
 -- este script una vez. No está pensado para fusionar con BDs ya migradas
@@ -62,6 +63,10 @@ CREATE TABLE tickets (
     closed_at TIMESTAMP,
     deleted_at TIMESTAMP,
     email_message_id TEXT,
+    sender_name TEXT,
+    sender_email TEXT,
+    raw_from TEXT,
+    sender_user_id INTEGER REFERENCES users (id) ON DELETE SET NULL,
     CONSTRAINT tickets_priority_check CHECK (priority IN ('low', 'medium', 'high')),
     CONSTRAINT tickets_status_check CHECK (status IN ('open', 'in_progress', 'closed')),
     CONSTRAINT tickets_category_check CHECK (
@@ -77,6 +82,12 @@ CREATE TABLE tickets (
 
 CREATE UNIQUE INDEX uq_tickets_email_message_id ON tickets (email_message_id)
 WHERE email_message_id IS NOT NULL;
+
+CREATE INDEX idx_tickets_sender_email_lower ON tickets ((LOWER(TRIM(sender_email))))
+WHERE sender_email IS NOT NULL AND TRIM(sender_email) <> '';
+
+CREATE INDEX idx_tickets_sender_user_id ON tickets (sender_user_id)
+WHERE sender_user_id IS NOT NULL;
 
 CREATE INDEX idx_tickets_created_by ON tickets (created_by);
 CREATE INDEX idx_tickets_status ON tickets (status);
@@ -149,6 +160,28 @@ WHERE message_id IS NOT NULL;
 CREATE INDEX idx_ingestion_events_status_created ON ingestion_events (status, created_at);
 
 COMMENT ON TABLE ingestion_events IS 'Staging de correo entrante (IMAP u otros); el worker procesa pending/failed con retry_count < max.';
+
+-- -----------------------------------------------------------------------------
+-- notifications (campana UI por usuario)
+-- -----------------------------------------------------------------------------
+CREATE TABLE notifications (
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    ticket_id INTEGER NOT NULL REFERENCES tickets (id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT notifications_type_chk CHECK (
+        type IN ('ticket_created', 'ticket_email', 'ticket_assigned', 'ticket_comment')
+    )
+);
+
+CREATE INDEX idx_notifications_user_created ON notifications (user_id, created_at DESC);
+CREATE INDEX idx_notifications_user_unread ON notifications (user_id) WHERE NOT is_read;
+
+COMMENT ON TABLE notifications IS 'Alertas por usuario; el listado enriquece prioridad/asignado desde tickets.';
 
 -- -----------------------------------------------------------------------------
 -- Datos iniciales (misma contraseña de prueba: 123456 — bcrypt cost 12)

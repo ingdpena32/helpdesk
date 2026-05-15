@@ -9,6 +9,12 @@ from psycopg2.extensions import connection as PGConnection
 
 from app.models.ticket import Ticket
 
+_SELECT_TICKET_ROW = """
+    id, title, description, created_by, priority, category, status,
+    created_at, updated_at, assigned_to, resolution, closed_at, deleted_at,
+    sender_name, sender_email, raw_from, sender_user_id
+"""
+
 
 def _active_clause(only_active: bool) -> str:
     return "deleted_at IS NULL" if only_active else "TRUE"
@@ -29,6 +35,10 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         resolution,
         closed_at,
         deleted_at,
+        sender_name,
+        sender_email,
+        raw_from,
+        sender_user_id,
     ) = row
     return Ticket(
         id=int(tid),
@@ -44,6 +54,10 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         resolution=str(resolution) if resolution is not None else None,
         closed_at=closed_at,
         deleted_at=deleted_at,
+        sender_name=str(sender_name) if sender_name is not None else None,
+        sender_email=str(sender_email) if sender_email is not None else None,
+        raw_from=str(raw_from) if raw_from is not None else None,
+        sender_user_id=int(sender_user_id) if sender_user_id is not None else None,
     )
 
 
@@ -59,12 +73,11 @@ def insert(
     """Inserta un ticket con valores por defecto de BD (status, fechas)."""
     with conn.cursor() as cur:
         cur.execute(
-            """
+            f"""
             INSERT INTO tickets (title, description, created_by, priority, category)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING
-                id, title, description, created_by, priority, category, status,
-                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+                {_SELECT_TICKET_ROW.strip()}
             """,
             (title, description, created_by, priority, category),
         )
@@ -131,8 +144,7 @@ def list_filtered(
     params.extend([limit, offset])
     sql = f"""
         SELECT
-            id, title, description, created_by, priority, category, status,
-            created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+            {_SELECT_TICKET_ROW.strip()}
         FROM tickets
         {where}
         ORDER BY updated_at DESC
@@ -150,8 +162,7 @@ def find_by_id(conn: PGConnection, ticket_id: int, *, only_active: bool = True) 
         cur.execute(
             f"""
             SELECT
-                id, title, description, created_by, priority, category, status,
-                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+                {_SELECT_TICKET_ROW.strip()}
             FROM tickets
             WHERE id = %s AND ({active_sql})
             LIMIT 1
@@ -176,7 +187,7 @@ def update_fields(
     """Actualiza ciclo de vida; no afecta filas eliminadas lógicamente."""
     with conn.cursor() as cur:
         cur.execute(
-            """
+            f"""
             UPDATE tickets
             SET
                 status = %s,
@@ -186,8 +197,7 @@ def update_fields(
                 updated_at = NOW()
             WHERE id = %s AND deleted_at IS NULL
             RETURNING
-                id, title, description, created_by, priority, category, status,
-                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+                {_SELECT_TICKET_ROW.strip()}
             """,
             (status, assigned_to, resolution, closed_at, ticket_id),
         )
@@ -260,20 +270,35 @@ def insert_from_inbound(
     priority: str,
     category: str,
     email_message_id: str | None,
+    sender_name: str | None,
+    sender_email: str | None,
+    raw_from: str | None,
+    sender_user_id: int | None,
 ) -> Ticket:
-    """Ticket creado desde correo (Message-ID raíz opcional)."""
+    """Ticket creado desde correo (Message-ID raíz + metadatos del remitente)."""
     with conn.cursor() as cur:
         cur.execute(
-            """
+            f"""
             INSERT INTO tickets (
-                title, description, created_by, priority, category, email_message_id
+                title, description, created_by, priority, category, email_message_id,
+                sender_name, sender_email, raw_from, sender_user_id
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING
-                id, title, description, created_by, priority, category, status,
-                created_at, updated_at, assigned_to, resolution, closed_at, deleted_at
+                {_SELECT_TICKET_ROW.strip()}
             """,
-            (title, description, created_by, priority, category, email_message_id),
+            (
+                title,
+                description,
+                created_by,
+                priority,
+                category,
+                email_message_id,
+                sender_name,
+                sender_email,
+                raw_from,
+                sender_user_id,
+            ),
         )
         row = cur.fetchone()
     if row is None:
