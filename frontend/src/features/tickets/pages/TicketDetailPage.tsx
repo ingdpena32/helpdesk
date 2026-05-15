@@ -6,9 +6,10 @@ import { ApiError, apiGetBlob } from '../../../shared/api/client'
 import { useAuth } from '../../auth/context/AuthContext'
 import { listAgents } from '../../agents/services/agentsApi'
 import DeleteTicketConfirmModal from '../components/DeleteTicketConfirmModal'
+import TransferTicketModal from '../components/TransferTicketModal'
 import { useTicketDetailQuery } from '../hooks/useTicketDetailQuery'
 import { deleteTicket, listTicketComments, patchTicket, postTicketComment } from '../services/ticketsApi'
-import type { PatchTicketPayload, TicketComment, TicketStatus } from '../types/ticket.types'
+import type { PatchTicketPayload, TicketAuditEntry, TicketComment, TicketStatus } from '../types/ticket.types'
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Abierto',
@@ -39,6 +40,17 @@ function parseDeleteError(err: unknown): string {
     /* no JSON */
   }
   return err.message || 'No se pudo eliminar el ticket.'
+}
+
+function auditSummary(entry: TicketAuditEntry): string {
+  if (entry.event_type === 'ticket_transfer') {
+    const m = entry.metadata as { from_user_id?: number | null; to_user_id?: number }
+    return `Transferencia → usuario #${m.to_user_id ?? '—'}`
+  }
+  if (entry.event_type === 'ticket_updated') {
+    return 'Actualización de ticket'
+  }
+  return entry.event_type
 }
 
 function parseApiError(err: unknown): string {
@@ -77,7 +89,7 @@ export default function TicketDetailPage() {
   const agentsQuery = useQuery({
     queryKey: ['agents'],
     queryFn: listAgents,
-    enabled: user?.role === 'admin',
+    enabled: !!user,
   })
 
   const [status, setStatus] = useState<TicketStatus>('open')
@@ -89,9 +101,11 @@ export default function TicketDetailPage() {
   const [commentError, setCommentError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const isAdmin = user?.role === 'admin'
+  const canStaff = user?.role === 'admin' || user?.role === 'agent'
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteTicket(ticketId),
@@ -224,6 +238,13 @@ export default function TicketDetailPage() {
         }}
       />
 
+      <TransferTicketModal
+        open={transferOpen && !!ticket}
+        ticketId={ticketId}
+        currentAssigneeId={ticket?.assigned_to ?? null}
+        onClose={() => setTransferOpen(false)}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <button
@@ -308,8 +329,33 @@ export default function TicketDetailPage() {
                   <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Cierre</dt>
                   <dd className="mt-1 text-on-surface">{ticket.closed_at ? formatDate(ticket.closed_at) : '—'}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Última transferencia</dt>
+                  <dd className="mt-1 text-on-surface">
+                    {ticket.transferred_at
+                      ? `${formatDate(ticket.transferred_at)} (por usuario #${ticket.transferred_by ?? '—'})`
+                      : '—'}
+                  </dd>
+                </div>
               </dl>
             </div>
+
+            {ticket.audit_log && ticket.audit_log.length > 0 ? (
+              <div className="dashboard-panel p-6">
+                <h3 className="font-architectural text-lg font-bold text-on-surface">Auditoría reciente</h3>
+                <ul className="mt-4 space-y-2 text-sm text-on-surface-variant">
+                  {ticket.audit_log.slice(0, 12).map((ev) => (
+                    <li key={ev.id} className="rounded-lg border border-white/10 bg-surface-container-low/30 px-3 py-2">
+                      <span className="font-medium text-on-surface">{auditSummary(ev)}</span>
+                      <span className="ml-2 text-xs">{formatDate(ev.created_at)}</span>
+                      {ev.actor_user_id != null ? (
+                        <span className="mt-1 block text-xs">Actor: #{ev.actor_user_id}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             {ticket.attachments && ticket.attachments.length > 0 ? (
               <div className="dashboard-panel p-6">
@@ -388,6 +434,16 @@ export default function TicketDetailPage() {
             <form className="dashboard-panel space-y-4 p-6" onSubmit={onSave}>
               <h3 className="font-architectural text-lg font-bold text-on-surface">Gestión</h3>
 
+              {canStaff ? (
+                <button
+                  type="button"
+                  onClick={() => setTransferOpen(true)}
+                  className="w-full rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary hover:bg-primary/20"
+                >
+                  Transferir ticket
+                </button>
+              ) : null}
+
               <div>
                 <label htmlFor={statusFieldId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
                   Estado
@@ -408,9 +464,9 @@ export default function TicketDetailPage() {
 
               <div>
                 <label htmlFor={assignFieldId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
-                  Asignado a (id de usuario agente o admin)
+                  Asignado a
                 </label>
-                {user?.role === 'admin' && agentsQuery.data?.results?.length ? (
+                {agentsQuery.data?.results?.length ? (
                   <select
                     id={assignFieldId}
                     value={assignedTo}
@@ -426,7 +482,7 @@ export default function TicketDetailPage() {
                     ) : null}
                     {agentsQuery.data.results.map((a) => (
                       <option key={a.id} value={String(a.id)}>
-                        {a.username} (#{a.id}) — carga {a.workload}
+                        {(a.full_name || a.username).trim()} (#{a.id}) — carga {a.workload}
                       </option>
                     ))}
                   </select>
@@ -441,11 +497,6 @@ export default function TicketDetailPage() {
                     placeholder="Vacío = sin asignar"
                   />
                 )}
-                {user?.role !== 'admin' ? (
-                  <p className="mt-1 text-xs text-on-surface-variant">
-                    Como agente, introduce el id numérico del usuario asignado (debe existir en la base).
-                  </p>
-                ) : null}
               </div>
 
               <div>

@@ -12,7 +12,8 @@ const allNavItems: NavItem[] = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['admin'] },
   { to: '/dashboard/agente', icon: 'dashboard', label: 'Mi panel', roles: ['agent'] },
   { to: '/tickets', icon: 'confirmation_number', label: 'Tickets', roles: ['admin', 'agent'] },
-  { to: '/agentes', icon: 'group', label: 'Agentes', roles: ['admin'] },
+  { to: '/agentes', icon: 'group', label: 'Agentes', roles: ['admin', 'agent'] },
+  { to: '/mi-perfil', icon: 'badge', label: 'Mi perfil', roles: ['admin', 'agent'] },
   { to: '/settings', icon: 'settings', label: 'Ajustes', roles: ['admin', 'agent'] },
 ]
 
@@ -29,9 +30,12 @@ function AppLayout() {
   }
 
   const displayName =
-    user?.first_name || user?.last_name
+    user?.full_name?.trim() ||
+    (user?.first_name || user?.last_name
       ? `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim()
-      : user?.user_name ?? 'Usuario'
+      : user?.user_name ?? 'Usuario')
+
+  const avatarUrl = user?.profile_photo_url?.trim() || null
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
@@ -115,11 +119,15 @@ function AppLayout() {
               </p>
             </div>
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-surface-container-high text-sm font-bold text-primary shadow-md shadow-black/30"
+              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface-container-high text-sm font-bold text-primary shadow-md shadow-black/30"
               role="img"
               aria-label="Avatar de usuario"
             >
-              {displayName.slice(0, 1).toUpperCase()}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                displayName.slice(0, 1).toUpperCase()
+              )}
             </div>
           </div>
         </div>

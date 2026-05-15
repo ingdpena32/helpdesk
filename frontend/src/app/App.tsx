@@ -5,6 +5,7 @@ import RoleRoute from '../features/auth/components/RoleRoute'
 import RootRedirect from '../features/auth/components/RootRedirect'
 import LoginPage from '../features/auth/pages/LoginPage'
 import AgentsPage from '../features/agents/pages/AgentsPage'
+import ProfilePage from '../features/profile/pages/ProfilePage'
 import AgentDashboardPage from '../features/dashboard/pages/AgentDashboardPage'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import SettingsPage from '../features/settings/pages/SettingsPage'
@@ -41,11 +42,12 @@ function App() {
           <Route
             path="/agentes"
             element={
-              <RoleRoute allowed={['admin']}>
+              <RoleRoute allowed={['admin', 'agent']}>
                 <AgentsPage />
               </RoleRoute>
             }
           />
+          <Route path="/mi-perfil" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

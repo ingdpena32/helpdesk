@@ -1,6 +1,7 @@
-import { apiGet, apiPost } from '../../../shared/api/client'
+import { apiDelete, apiGet, apiPost, apiPut } from '../../../shared/api/client'
 import type { Paginated } from '../../../shared/api/types'
-import type { Agent } from '../types/agent.types'
+import type { Ticket } from '../../tickets/types/ticket.types'
+import type { Agent, Department } from '../types/agent.types'
 
 export function listAgents(): Promise<Paginated<Agent>> {
   return apiGet<Paginated<Agent>>('/api/agents')
@@ -9,8 +10,44 @@ export function listAgents(): Promise<Paginated<Agent>> {
 export type CreateAgentPayload = {
   email: string
   password: string
+  corporate_email?: string
+  full_name?: string
+  phone?: string
+  document_number?: string
+  gender?: string
+  department_id?: number | null
+  professional_role?: string
 }
 
 export function createAgent(payload: CreateAgentPayload): Promise<Agent> {
   return apiPost<Agent>('/api/agents', payload)
+}
+
+export type UpdateAgentPayload = {
+  full_name?: string | null
+  phone?: string | null
+  gender?: string | null
+  corporate_email?: string
+  document_number?: string | null
+  professional_role?: string | null
+  department_id?: number | null
+  is_active?: boolean
+  role?: string
+  password?: string
+}
+
+export function updateAgent(agentId: number, payload: UpdateAgentPayload): Promise<Agent> {
+  return apiPut<Agent>(`/api/agents/${agentId}`, payload)
+}
+
+export function deleteAgent(agentId: number): Promise<void> {
+  return apiDelete(`/api/agents/${agentId}`)
+}
+
+export function listDepartments(): Promise<{ results: Department[] }> {
+  return apiGet<{ results: Department[] }>('/api/departments')
+}
+
+export function transferTicket(ticketId: number, assigneeId: number): Promise<Ticket> {
+  return apiPut<Ticket>(`/api/tickets/${ticketId}/transfer`, { assignee_id: assigneeId })
 }

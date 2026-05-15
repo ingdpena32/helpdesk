@@ -7,11 +7,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class BinaryPayload:
-    """Respuesta GET no JSON (adjuntos)."""
+    """Respuesta GET no JSON (adjuntos o imágenes)."""
 
     body: bytes
     content_type: str
     filename: str
+    as_attachment: bool = True
 
 
 def cors_headers() -> dict[str, str]:

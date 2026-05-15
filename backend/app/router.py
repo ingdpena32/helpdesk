@@ -13,6 +13,7 @@ from app.controllers import (
     attachment_controller,
     auth_controller,
     notification_controller,
+    profile_controller,
     ticket_controller,
 )
 from app.utils.http_path import canonical_api_path, normalize_path as norm_path
@@ -62,6 +63,27 @@ def dispatch(
 
     np = normalize_path(path)
 
+    if m == "GET" and np == "/api/me/profile":
+        return profile_controller.get_me(json_body, q, h)
+
+    if m == "PATCH" and np == "/api/me/profile":
+        return profile_controller.patch_me(json_body, q, h)
+
+    if m == "GET" and np == "/api/departments":
+        return agent_controller.get_departments(json_body, q, h)
+
+    _prof_fn = re.match(r"^/api/uploads/profiles/([^/]+)$", np)
+    if m == "GET" and _prof_fn:
+        return profile_controller.get_profile_file(json_body, q, h, _prof_fn.group(1))
+
+    _agents_id = re.match(r"^/api/agents/(\d+)$", np)
+    if _agents_id:
+        aid = int(_agents_id.group(1))
+        if m == "PUT":
+            return agent_controller.put_update(json_body, q, h, aid)
+        if m == "DELETE":
+            return agent_controller.delete_one(json_body, q, h, aid)
+
     if m == "GET" and np == "/api/notifications/unread-count":
         return notification_controller.get_unread_count(json_body, q, h)
 
@@ -105,6 +127,8 @@ def dispatch(
             return ticket_controller.get_comments(json_body, q, h, tid)
         if action == "comments_post":
             return ticket_controller.post_comment(json_body, q, h, tid)
+        if action == "ticket_transfer":
+            return ticket_controller.put_transfer(json_body, q, h, tid)
         return 405, {"error": "Método no permitido"}
 
     key = (m, normalize_path(path))

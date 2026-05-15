@@ -5,9 +5,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
+from app.auth import permissions
 from app.database.db import get_connection
 from app.models.ticket import Ticket
-from app.repositories import ticket_attachment_repository, ticket_comment_repository, ticket_repository, user_repository
+from app.repositories import (
+    ticket_attachment_repository,
+    ticket_audit_repository,
+    ticket_comment_repository,
+    ticket_repository,
+    user_repository,
+)
 from app.services import auth_service, notification_service
 
 ALLOWED_CATEGORIES: frozenset[str] = frozenset(
@@ -51,6 +58,8 @@ def _ticket_to_json(t: Ticket) -> dict[str, Any]:
         "created_at": t.created_at.isoformat() if isinstance(t.created_at, datetime) else t.created_at,
         "updated_at": t.updated_at.isoformat() if isinstance(t.updated_at, datetime) else t.updated_at,
         "assigned_to": t.assigned_to,
+        "transferred_by": t.transferred_by,
+        "transferred_at": t.transferred_at.isoformat() if t.transferred_at else None,
         "resolution": t.resolution,
         "closed_at": t.closed_at.isoformat() if t.closed_at else None,
         "sender_name": t.sender_name,
@@ -211,11 +220,13 @@ def get_ticket(headers: Mapping[str, str], ticket_id: int) -> tuple[int, dict]:
                 }
                 for a in atts
             ]
+            audit = ticket_audit_repository.list_for_ticket(conn, ticket_id, limit=30)
     except Exception:
         return 500, {"error": "No se pudo obtener el ticket."}
 
     out = _ticket_to_json(ticket)
     out["attachments"] = att_json
+    out["audit_log"] = audit
     return 200, out
 
 
@@ -249,7 +260,7 @@ def soft_delete_ticket(headers: Mapping[str, str], ticket_id: int) -> tuple[int,
 
 def _assignee_allowed(conn, assignee_id: int) -> bool:
     u = user_repository.find_by_id(conn, assignee_id)
-    if u is None:
+    if u is None or not u.is_active:
         return False
     role = (u.role or "").strip().lower()
     return role in ("agent", "admin")
@@ -295,7 +306,7 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
                     if aid < 1:
                         return 400, {"error": "assigned_to inválido"}
                     if not _assignee_allowed(conn, aid):
-                        return 400, {"error": "assigned_to debe ser un usuario agente o administrador existente"}
+                        return 400, {"error": "assigned_to debe ser un usuario agente o administrador activo existente"}
                     new_assigned = int(aid)
 
             new_resolution = ticket.resolution
@@ -337,6 +348,22 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
                     conn, assignee_id=new_assigned, ticket=updated
                 )
 
+            changed: dict[str, Any] = {}
+            if new_status != ticket.status:
+                changed["status"] = {"from": ticket.status, "to": new_status}
+            if new_assigned != ticket.assigned_to:
+                changed["assigned_to"] = {"from": ticket.assigned_to, "to": new_assigned}
+            if (new_resolution or "").strip() != (ticket.resolution or "").strip():
+                changed["resolution"] = {"updated": True}
+            if changed:
+                ticket_audit_repository.insert_event(
+                    conn,
+                    ticket_id=ticket_id,
+                    event_type="ticket_updated",
+                    actor_user_id=user.id,
+                    metadata=changed,
+                )
+
             conn.commit()
     except Exception:
         return 500, {"error": "No se pudo actualizar el ticket."}
@@ -344,7 +371,89 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
     return 200, _ticket_to_json(updated)
 
 
-def list_comments(headers: Mapping[str, str], ticket_id: int) -> tuple[int, dict]:
+def transfer_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any] | None) -> tuple[int, dict]:
+    """PUT /api/tickets/{id}/transfer — admin o agente."""
+    if body is None:
+        body = {}
+
+    raw_to = body.get("assignee_id")
+    if raw_to is None:
+        raw_to = body.get("to_agent_id")
+    if raw_to is None:
+        raw_to = body.get("user_id")
+
+    if raw_to is None:
+        return 400, {"error": "assignee_id es obligatorio"}
+
+    try:
+        if isinstance(raw_to, bool):
+            return 400, {"error": "assignee_id inválido"}
+        if isinstance(raw_to, int):
+            dest_id = int(raw_to)
+        elif isinstance(raw_to, float) and raw_to.is_integer():
+            dest_id = int(raw_to)
+        elif isinstance(raw_to, str) and raw_to.strip().lstrip("-").isdigit():
+            dest_id = int(raw_to.strip())
+        else:
+            return 400, {"error": "assignee_id debe ser un entero"}
+    except (TypeError, ValueError):
+        return 400, {"error": "assignee_id inválido"}
+
+    if dest_id < 1:
+        return 400, {"error": "assignee_id inválido"}
+
+    try:
+        with get_connection() as conn:
+            actor, err_status, err_body = auth_service.require_user(conn, headers)
+            if actor is None:
+                return err_status or 401, err_body or {"error": "No autorizado"}
+            if not permissions.is_staff(actor.role):
+                return 403, {"error": "No autorizado para transferir tickets"}
+
+            ticket = ticket_repository.find_by_id(conn, ticket_id)
+            if ticket is None:
+                return 404, {"error": "Ticket no encontrado"}
+
+            dest = user_repository.find_by_id(conn, dest_id)
+            if dest is None:
+                return 404, {"error": "El agente destino no existe"}
+            if not dest.is_active:
+                return 400, {"error": "No se puede transferir a un usuario inactivo"}
+            if not _assignee_allowed(conn, dest_id):
+                return 400, {"error": "El destino debe ser un agente o administrador activo"}
+
+            prev = ticket.assigned_to
+            if prev is not None and prev == dest_id:
+                return 400, {"error": "El ticket ya está asignado a ese usuario"}
+
+            updated = ticket_repository.transfer_assignee(
+                conn,
+                ticket_id,
+                new_assignee_id=dest_id,
+                transferred_by_user_id=actor.id,
+            )
+            if updated is None:
+                conn.rollback()
+                return 404, {"error": "Ticket no encontrado"}
+
+            ticket_audit_repository.insert_event(
+                conn,
+                ticket_id=ticket_id,
+                event_type="ticket_transfer",
+                actor_user_id=actor.id,
+                metadata={
+                    "from_user_id": prev,
+                    "to_user_id": dest_id,
+                    "to_email": dest.email,
+                },
+            )
+
+            notification_service.notify_ticket_assigned(conn, assignee_id=dest_id, ticket=updated)
+            conn.commit()
+    except Exception:
+        return 500, {"error": "No se pudo transferir el ticket."}
+
+    return 200, _ticket_to_json(updated)
     try:
         with get_connection() as conn:
             user, err_status, err_body = auth_service.require_user(conn, headers)

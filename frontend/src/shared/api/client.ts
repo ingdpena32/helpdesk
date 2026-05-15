@@ -102,6 +102,32 @@ export async function apiPost<T>(path: string, body: unknown, init?: ApiRequestI
   return request<T>(path, { method: 'POST', body: JSON.stringify(body), ...init, headers })
 }
 
+/** POST multipart (p. ej. foto de perfil); no fijar Content-Type para que el navegador añada boundary. */
+export async function apiPostMultipart<T>(path: string, formData: FormData, init?: ApiRequestInit): Promise<T> {
+  const { auth = true, _retry = false, ...rest } = init ?? {}
+  const headers = buildHeaders(rest.headers, auth)
+  headers.delete('Content-Type')
+
+  const res = await fetch(joinUrl(path), { credentials: 'include', ...rest, method: 'POST', body: formData, headers })
+
+  if (res.status === 401 && auth && !_retry) {
+    const newToken = await tryRefreshToken()
+    if (newToken) {
+      return apiPostMultipart<T>(path, formData, { ...init, _retry: true })
+    }
+    clearSession()
+    window.location.href = '/login'
+    throw new ApiError(401, 'Sesión expirada')
+  }
+
+  if (!res.ok) {
+    const body = await res.text()
+    throw new ApiError(res.status, body || res.statusText)
+  }
+
+  return res.json() as Promise<T>
+}
+
 export async function apiPatch<T>(path: string, body: unknown, init?: ApiRequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')

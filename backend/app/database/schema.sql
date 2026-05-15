@@ -7,12 +7,21 @@
 --   2_create_ticket_comments.sql, 3_add_users_password_hash_column.sql,
 --   4_backfill_admin_password_hash.sql, 5_drop_users_password_column.sql,
 --   6_seed_agent_user.sql, 7_email_ingestion.sql, 8_notifications.sql,
---   9_ticket_email_sender.sql
+--   9_ticket_email_sender.sql, 10_agents_departments_audit.sql
 --
 -- Uso: crear una base vacía (p. ej. CREATE DATABASE helpdesk;) y ejecutar
 -- este script una vez. No está pensado para fusionar con BDs ya migradas
 -- por pasos (usar las migraciones numeradas en ese caso).
 -- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- departments (alineado con categorías de tickets)
+-- -----------------------------------------------------------------------------
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    CONSTRAINT departments_name_unique UNIQUE (name)
+);
 
 -- -----------------------------------------------------------------------------
 -- users (contraseña solo como bcrypt; sin columna password en texto plano)
@@ -23,10 +32,27 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT users_email_unique UNIQUE (email)
+    full_name TEXT,
+    corporate_email TEXT NOT NULL,
+    phone TEXT,
+    document_number TEXT,
+    gender TEXT,
+    department_id INTEGER REFERENCES departments (id) ON DELETE SET NULL,
+    professional_role TEXT,
+    profile_photo TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT users_email_unique UNIQUE (email),
+    CONSTRAINT users_gender_chk CHECK (
+        gender IS NULL OR gender IN ('male', 'female', 'other', 'unspecified')
+    )
 );
 
 CREATE UNIQUE INDEX uq_users_email_lower ON users ((LOWER(TRIM(email))));
+CREATE UNIQUE INDEX uq_users_corporate_email_lower ON users ((LOWER(TRIM(corporate_email))));
+CREATE UNIQUE INDEX uq_users_document_number_trim ON users ((TRIM(document_number)))
+WHERE document_number IS NOT NULL AND TRIM(document_number) <> '';
+CREATE INDEX idx_users_department_id ON users (department_id) WHERE department_id IS NOT NULL;
+CREATE INDEX idx_users_is_active ON users (is_active) WHERE is_active;
 
 -- -----------------------------------------------------------------------------
 -- sessions (JWT persistido: access + refresh)
@@ -59,6 +85,8 @@ CREATE TABLE tickets (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     assigned_to INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    transferred_by INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    transferred_at TIMESTAMP,
     resolution TEXT,
     closed_at TIMESTAMP,
     deleted_at TIMESTAMP,
@@ -93,6 +121,28 @@ CREATE INDEX idx_tickets_created_by ON tickets (created_by);
 CREATE INDEX idx_tickets_status ON tickets (status);
 CREATE INDEX idx_tickets_category ON tickets (category);
 CREATE INDEX idx_tickets_deleted_at ON tickets (deleted_at);
+CREATE INDEX idx_tickets_transferred_at ON tickets (transferred_at) WHERE transferred_at IS NOT NULL;
+
+-- -----------------------------------------------------------------------------
+-- ticket_audit_events (transferencias y otras acciones)
+-- -----------------------------------------------------------------------------
+CREATE TABLE ticket_audit_events (
+    id BIGSERIAL PRIMARY KEY,
+    ticket_id INTEGER NOT NULL REFERENCES tickets (id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    actor_user_id INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT ticket_audit_events_type_chk CHECK (
+        event_type IN ('ticket_transfer', 'ticket_updated', 'ticket_comment', 'other')
+    )
+);
+
+CREATE INDEX idx_ticket_audit_ticket_created ON ticket_audit_events (ticket_id, created_at DESC);
+
+COMMENT ON COLUMN users.professional_role IS 'Rol o cargo profesional (distinto de users.role permisos).';
+COMMENT ON COLUMN tickets.transferred_by IS 'Usuario que ejecutó la última transferencia explícita.';
+COMMENT ON TABLE ticket_audit_events IS 'Auditoría de acciones relevantes sobre tickets.';
 
 -- -----------------------------------------------------------------------------
 -- ticket_comments (usuarios web o comentarios vía correo: user_id opcional)
@@ -187,11 +237,19 @@ COMMENT ON TABLE notifications IS 'Alertas por usuario; el listado enriquece pri
 -- Datos iniciales (misma contraseña de prueba: 123456 — bcrypt cost 12)
 -- Hash: $2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm
 -- -----------------------------------------------------------------------------
-INSERT INTO users (email, password_hash, role)
+INSERT INTO departments (name) VALUES
+    ('ERP'),
+    ('Infraestructura'),
+    ('Soporte técnico'),
+    ('Bases de datos'),
+    ('Desarrollo')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO users (email, password_hash, role, corporate_email, full_name)
 VALUES
-    ('admin@test.com', '$2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm', 'admin'),
-    ('agent@test.com', '$2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm', 'agent'),
-    ('inbound@system.local', '$2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm', 'admin')
+    ('admin@test.com', '$2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm', 'admin', 'admin@test.com', 'Administrador demo'),
+    ('agent@test.com', '$2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm', 'agent', 'agent@test.com', 'Agente demo'),
+    ('inbound@system.local', '$2b$12$VH2Z1r7uvBkdA6eL20xCYOipDBVqKlCJKsAvo08CfnC0PP8F6rFwm', 'admin', 'inbound@system.local', 'Ingesta correo')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO tickets (title, description, created_by, priority, category, status)

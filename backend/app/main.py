@@ -6,6 +6,7 @@ Ejecutar desde la carpeta `backend`:  python main.py
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Mapping
@@ -19,9 +20,12 @@ if __package__ in (None, ""):
         sys.path.insert(0, str(_backend_root))
 
 from app.email.config import max_payload_bytes
+from app.utils.http_path import canonical_api_path
 from app.request_parse import ParseBodyError, parse_body_for_dispatch
 from app.router import dispatch
 from app.utils.response import BinaryPayload, cors_headers
+
+_LOG = logging.getLogger(__name__)
 
 
 def _flat_query_args() -> dict[str, str]:
@@ -33,6 +37,12 @@ def _headers_mapping() -> Mapping[str, str]:
 
 
 def create_app() -> Flask:
+    if not logging.root.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+
     app = Flask(__name__)
     app.json.ensure_ascii = False
     app.config["MAX_CONTENT_LENGTH"] = max_payload_bytes()
@@ -56,7 +66,11 @@ def create_app() -> Flask:
     def _binary_response(status: int, bp: BinaryPayload) -> Response:
         r = Response(bp.body, status=status, mimetype=bp.content_type)
         r.headers["Content-Length"] = str(len(bp.body))
-        r.headers["Content-Disposition"] = f'attachment; filename="{bp.filename.replace(chr(34), "")}"'
+        safe = bp.filename.replace(chr(34), "")
+        if bp.as_attachment:
+            r.headers["Content-Disposition"] = f'attachment; filename="{safe}"'
+        else:
+            r.headers["Content-Disposition"] = f'inline; filename="{safe}"'
         return r
 
     def _handle_dispatch(**_view_args: object) -> Response:
@@ -67,11 +81,20 @@ def create_app() -> Flask:
         path = request.path
         q = _flat_query_args()
         h = _headers_mapping()
+        cp = canonical_api_path(path)
+
+        if method == "POST" and cp == "/api/profile/photo":
+            from app.controllers import profile_controller
+
+            status, body = profile_controller.post_photo_from_request(h, request)
+            if isinstance(body, BinaryPayload):
+                return _binary_response(status, body)
+            return _json_response(status, body)
 
         body_in: dict | None = None
         if method == "GET" or method == "DELETE":
             body_in = None
-        elif method in ("POST", "PATCH"):
+        elif method in ("POST", "PATCH", "PUT"):
             raw = request.get_data(cache=True)
             try:
                 body_in = parse_body_for_dispatch(method, raw, request.headers.get("Content-Type"))
@@ -80,7 +103,12 @@ def create_app() -> Flask:
         else:
             return _json_response(405, {"error": "Método no permitido"})
 
-        status, body = dispatch(method, path, body_in, q, h)
+        try:
+            status, body = dispatch(method, path, body_in, q, h)
+        except Exception:
+            _LOG.exception("Error no manejado en dispatch: %s %s", method, path)
+            return _json_response(500, {"error": "Error interno del servidor"})
+
         if isinstance(body, BinaryPayload):
             return _binary_response(status, body)
         return _json_response(status, body)
@@ -89,13 +117,13 @@ def create_app() -> Flask:
         "/",
         endpoint="dispatch_root",
         view_func=_handle_dispatch,
-        methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     )
     app.add_url_rule(
         "/<path:subpath>",
         endpoint="dispatch_subpath",
         view_func=_handle_dispatch,
-        methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     )
 
     return app

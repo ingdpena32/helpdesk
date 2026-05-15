@@ -34,4 +34,7 @@ def get_authenticated_user(conn: PGConnection, headers: Mapping[str, str]) -> Us
     if row is None:
         return None
     uid, _email, _role = row
-    return user_repository.find_by_id(conn, uid)
+    user = user_repository.find_by_id(conn, uid)
+    if user is None or not user.is_active:
+        return None
+    return user

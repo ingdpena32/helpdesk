@@ -12,7 +12,8 @@ from app.models.ticket import Ticket
 _SELECT_TICKET_ROW = """
     id, title, description, created_by, priority, category, status,
     created_at, updated_at, assigned_to, resolution, closed_at, deleted_at,
-    sender_name, sender_email, raw_from, sender_user_id
+    sender_name, sender_email, raw_from, sender_user_id,
+    transferred_by, transferred_at
 """
 
 
@@ -39,6 +40,8 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         sender_email,
         raw_from,
         sender_user_id,
+        transferred_by,
+        transferred_at,
     ) = row
     return Ticket(
         id=int(tid),
@@ -54,6 +57,8 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         resolution=str(resolution) if resolution is not None else None,
         closed_at=closed_at,
         deleted_at=deleted_at,
+        transferred_by=int(transferred_by) if transferred_by is not None else None,
+        transferred_at=transferred_at,
         sender_name=str(sender_name) if sender_name is not None else None,
         sender_email=str(sender_email) if sender_email is not None else None,
         raw_from=str(raw_from) if raw_from is not None else None,
@@ -200,6 +205,35 @@ def update_fields(
                 {_SELECT_TICKET_ROW.strip()}
             """,
             (status, assigned_to, resolution, closed_at, ticket_id),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return _row_to_ticket(row)
+
+
+def transfer_assignee(
+    conn: PGConnection,
+    ticket_id: int,
+    *,
+    new_assignee_id: int,
+    transferred_by_user_id: int,
+) -> Ticket | None:
+    """Asigna ticket a otro agente/admin y registra metadatos de transferencia."""
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            UPDATE tickets
+            SET
+                assigned_to = %s,
+                transferred_by = %s,
+                transferred_at = NOW(),
+                updated_at = NOW()
+            WHERE id = %s AND deleted_at IS NULL
+            RETURNING
+                {_SELECT_TICKET_ROW.strip()}
+            """,
+            (new_assignee_id, transferred_by_user_id, ticket_id),
         )
         row = cur.fetchone()
     if row is None:

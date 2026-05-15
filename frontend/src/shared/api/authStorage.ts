@@ -9,6 +9,13 @@ export type StoredUser = {
   role: 'admin' | 'agent'
   first_name: string
   last_name: string
+  full_name?: string
+  corporate_email?: string
+  profile_photo?: string | null
+  profile_photo_url?: string | null
+  phone?: string
+  department_id?: number | null
+  professional_role?: string
 }
 
 export function getAccessToken(): string | null {

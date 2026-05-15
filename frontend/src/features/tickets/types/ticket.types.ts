@@ -27,6 +27,15 @@ export type TicketAttachmentMeta = {
   comment_id: number | null
 }
 
+export type TicketAuditEntry = {
+  id: number
+  ticket_id: number
+  event_type: string
+  actor_user_id: number | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 export type Ticket = {
   id: number
   title: string
@@ -41,6 +50,8 @@ export type Ticket = {
   updated_at: string
   closed_at: string | null
   assigned_to: number | null
+  transferred_by?: number | null
+  transferred_at?: string | null
   created_by?: number
   resolution?: string | null
   /** Ingesta por correo (null si ticket manual o legado sin datos). */
@@ -48,6 +59,7 @@ export type Ticket = {
   sender_email?: string | null
   sender_user_id?: number | null
   attachments?: TicketAttachmentMeta[]
+  audit_log?: TicketAuditEntry[]
 }
 
 export type TicketFilters = {

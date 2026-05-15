@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../../../shared/api/client'
+import { useDepartmentsQuery } from '../hooks/useDepartmentsQuery'
 import { createAgent } from '../services/agentsApi'
 
 type Props = {
@@ -19,16 +20,32 @@ function parseApiError(err: unknown): string {
   }
   if (err.status === 401) return 'Sesión expirada.'
   if (err.status === 403) return 'No tienes permiso para crear agentes.'
-  if (err.status === 409) return 'Ya existe un usuario con ese email.'
+  if (err.status === 409) return 'Ya existe un usuario con ese email o datos únicos duplicados.'
   return err.message || 'No se pudo crear el agente.'
 }
 
 export default function CreateAgentModal({ open, onClose }: Props) {
   const queryClient = useQueryClient()
+  const deps = useDepartmentsQuery()
   const emailId = useId()
   const passwordId = useId()
+  const corpId = useId()
+  const fullId = useId()
+  const deptId = useId()
+  const phoneId = useId()
+  const docId = useId()
+  const genderId = useId()
+  const profId = useId()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [corporateEmail, setCorporateEmail] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [departmentId, setDepartmentId] = useState('')
+  const [phone, setPhone] = useState('')
+  const [documentNumber, setDocumentNumber] = useState('')
+  const [gender, setGender] = useState('')
+  const [professionalRole, setProfessionalRole] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
   const mutation = useMutation({
@@ -37,6 +54,13 @@ export default function CreateAgentModal({ open, onClose }: Props) {
       void queryClient.invalidateQueries({ queryKey: ['agents'] })
       setEmail('')
       setPassword('')
+      setCorporateEmail('')
+      setFullName('')
+      setDepartmentId('')
+      setPhone('')
+      setDocumentNumber('')
+      setGender('')
+      setProfessionalRole('')
       setFormError(null)
       onClose()
     },
@@ -68,7 +92,17 @@ export default function CreateAgentModal({ open, onClose }: Props) {
       setFormError('La contraseña debe tener al menos 6 caracteres.')
       return
     }
-    mutation.mutate({ email: em, password })
+    mutation.mutate({
+      email: em,
+      password,
+      corporate_email: corporateEmail.trim() ? corporateEmail.trim().toLowerCase() : undefined,
+      full_name: fullName.trim() || undefined,
+      phone: phone.trim() || undefined,
+      document_number: documentNumber.trim() || undefined,
+      gender: gender || undefined,
+      professional_role: professionalRole.trim() || undefined,
+      department_id: departmentId === '' ? undefined : Number(departmentId),
+    })
   }
 
   return (
@@ -87,7 +121,9 @@ export default function CreateAgentModal({ open, onClose }: Props) {
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="font-architectural text-xl font-bold text-on-surface">Crear agente</h2>
-            <p className="mt-1 text-sm text-on-surface-variant">Se creará un usuario con rol agente y contraseña hasheada en el servidor.</p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Usuario con rol agente. Email corporativo por defecto coincide con el de acceso si lo deja vacío.
+            </p>
           </div>
           <button
             type="button"
@@ -99,10 +135,10 @@ export default function CreateAgentModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-3" onSubmit={onSubmit}>
           <div>
             <label htmlFor={emailId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
-              Email
+              Email acceso
             </label>
             <input
               id={emailId}
@@ -112,6 +148,97 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
               required
+            />
+          </div>
+          <div>
+            <label htmlFor={corpId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Email corporativo (opcional, único)
+            </label>
+            <input
+              id={corpId}
+              type="email"
+              value={corporateEmail}
+              onChange={(e) => setCorporateEmail(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+          <div>
+            <label htmlFor={fullId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Nombre completo
+            </label>
+            <input
+              id={fullId}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+          <div>
+            <label htmlFor={deptId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Departamento
+            </label>
+            <select
+              id={deptId}
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            >
+              <option value="">—</option>
+              {(deps.data?.results ?? []).map((d) => (
+                <option key={d.id} value={String(d.id)}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={phoneId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Teléfono
+            </label>
+            <input
+              id={phoneId}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+          <div>
+            <label htmlFor={docId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Documento (único)
+            </label>
+            <input
+              id={docId}
+              value={documentNumber}
+              onChange={(e) => setDocumentNumber(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+          <div>
+            <label htmlFor={genderId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Género
+            </label>
+            <select
+              id={genderId}
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            >
+              <option value="">—</option>
+              <option value="male">Masculino</option>
+              <option value="female">Femenino</option>
+              <option value="other">Otro</option>
+              <option value="unspecified">Prefiero no indicar</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor={profId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
+              Rol profesional / cargo
+            </label>
+            <input
+              id={profId}
+              value={professionalRole}
+              onChange={(e) => setProfessionalRole(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <div>

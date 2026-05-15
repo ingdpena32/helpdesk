@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Mapping
 
 import bcrypt
@@ -30,13 +31,21 @@ def _role_for_frontend(role: str) -> str:
 
 
 def _user_json(user: User) -> dict[str, Any]:
+    fn = (user.full_name or "").strip()
     return {
         "id": user.id,
         "user_name": user.email,
         "email": user.email,
         "role": _role_for_frontend(user.role),
-        "first_name": "",
-        "last_name": "",
+        "first_name": fn.split()[0] if fn else "",
+        "last_name": " ".join(fn.split()[1:]) if len(fn.split()) > 1 else "",
+        "full_name": user.full_name or "",
+        "corporate_email": user.corporate_email or user.email,
+        "profile_photo": user.profile_photo,
+        "profile_photo_url": f"/api/uploads/profiles/{Path(user.profile_photo).name}" if user.profile_photo else None,
+        "phone": user.phone or "",
+        "department_id": user.department_id,
+        "professional_role": user.professional_role or "",
     }
 
 
@@ -59,7 +68,7 @@ def login(identifier: str, password: str | None) -> tuple[int, dict]:
     try:
         with get_connection() as conn:
             user = user_repository.find_by_email(conn, em)
-            if user is None or not _verify_password(pw, user.password_hash):
+            if user is None or not user.is_active or not _verify_password(pw, user.password_hash):
                 return 401, {"error": "Credenciales inválidas"}
 
             access = _generate_token()

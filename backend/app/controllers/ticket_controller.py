@@ -50,8 +50,15 @@ def post_comment(
 
 
 # Tras canonical_api_path no hay barra final; aceptamos también patrón con / opcional por si se llama sin canonicalizar.
+_TICKET_TRANSFER_RE = re.compile(r"^/api/tickets/(\d+)/transfer/?$")
 _TICKET_ID_RE = re.compile(r"^/api/tickets/(\d+)/comments/?$")
 _TICKET_ONE_RE = re.compile(r"^/api/tickets/(\d+)/?$")
+
+
+def put_transfer(
+    body: dict[str, Any] | None, query: dict[str, str], headers: Mapping[str, str], ticket_id: int
+) -> tuple[int, dict]:
+    return ticket_service.transfer_ticket(headers, ticket_id, body)
 
 
 def match_ticket_subresource(
@@ -62,6 +69,12 @@ def match_ticket_subresource(
     `path` debe estar ya canonicalizado (p. ej. tras `canonical_api_path` en el router).
     """
     p = normalize_path(canonical_api_path(path))
+    mt_tr = _TICKET_TRANSFER_RE.match(p)
+    if mt_tr:
+        tid = int(mt_tr.group(1))
+        if method == "PUT":
+            return ("ticket_transfer", tid)
+        return None
     m = _TICKET_ID_RE.match(p)
     if m:
         tid = int(m.group(1))

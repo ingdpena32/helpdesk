@@ -41,10 +41,10 @@ def parse_post_payload(raw: bytes, content_type_header: str | None) -> dict[str,
 
 
 def parse_body_for_dispatch(method: str, raw: bytes, content_type_header: str | None) -> dict[str, Any]:
-    """Cuerpo para POST/PATCH: vacío → {}."""
-    assert method in ("POST", "PATCH")
+    """Cuerpo para POST/PATCH/PUT: vacío → {}."""
+    assert method in ("POST", "PATCH", "PUT")
     if not raw:
         return {}
-    if method == "POST":
-        return parse_post_payload(raw, content_type_header)
-    return parse_patch_json(raw)
+    if method == "PATCH":
+        return parse_patch_json(raw)
+    return parse_post_payload(raw, content_type_header)

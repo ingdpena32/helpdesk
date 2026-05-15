@@ -22,6 +22,8 @@ class Ticket:
     resolution: Optional[str]
     closed_at: Optional[datetime]
     deleted_at: Optional[datetime] = None
+    transferred_by: Optional[int] = None
+    transferred_at: Optional[datetime] = None
     sender_name: Optional[str] = None
     sender_email: Optional[str] = None
     raw_from: Optional[str] = None
