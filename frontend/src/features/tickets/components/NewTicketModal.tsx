@@ -16,6 +16,7 @@ const priorityChoices: { value: TicketPriority; label: string }[] = [
   { value: 'low', label: 'Baja' },
   { value: 'medium', label: 'Media' },
   { value: 'high', label: 'Alta' },
+  { value: 'critical', label: 'Crítica' },
 ]
 
 function parseApiError(err: unknown): string {

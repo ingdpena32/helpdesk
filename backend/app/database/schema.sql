@@ -7,7 +7,7 @@
 --   2_create_ticket_comments.sql, 3_add_users_password_hash_column.sql,
 --   4_backfill_admin_password_hash.sql, 5_drop_users_password_column.sql,
 --   6_seed_agent_user.sql, 7_email_ingestion.sql, 8_notifications.sql,
---   9_ticket_email_sender.sql, 10_agents_departments_audit.sql
+--   9_ticket_email_sender.sql, 10_agents_departments_audit.sql, 11_ticket_ai_ollama.sql
 --
 -- Uso: crear una base vacía (p. ej. CREATE DATABASE helpdesk;) y ejecutar
 -- este script una vez. No está pensado para fusionar con BDs ya migradas
@@ -95,7 +95,9 @@ CREATE TABLE tickets (
     sender_email TEXT,
     raw_from TEXT,
     sender_user_id INTEGER REFERENCES users (id) ON DELETE SET NULL,
-    CONSTRAINT tickets_priority_check CHECK (priority IN ('low', 'medium', 'high')),
+    ai_status TEXT NOT NULL DEFAULT 'Sin IA',
+    ai_motivo TEXT,
+    CONSTRAINT tickets_priority_check CHECK (priority IN ('low', 'medium', 'high', 'critical')),
     CONSTRAINT tickets_status_check CHECK (status IN ('open', 'in_progress', 'closed')),
     CONSTRAINT tickets_category_check CHECK (
         category IN (
@@ -103,7 +105,13 @@ CREATE TABLE tickets (
             'Infraestructura',
             'Soporte técnico',
             'Bases de datos',
-            'Desarrollo'
+            'Desarrollo',
+            'Soporte TI',
+            'Redes',
+            'RRHH',
+            'Contabilidad',
+            'Compras',
+            'Sin clasificar'
         )
     )
 );
@@ -122,6 +130,9 @@ CREATE INDEX idx_tickets_status ON tickets (status);
 CREATE INDEX idx_tickets_category ON tickets (category);
 CREATE INDEX idx_tickets_deleted_at ON tickets (deleted_at);
 CREATE INDEX idx_tickets_transferred_at ON tickets (transferred_at) WHERE transferred_at IS NOT NULL;
+
+COMMENT ON COLUMN tickets.ai_status IS 'Estado clasificación IA: Sin IA, Procesando IA, Clasificado, Error.';
+COMMENT ON COLUMN tickets.ai_motivo IS 'Motivo breve de la clasificación IA.';
 
 -- -----------------------------------------------------------------------------
 -- ticket_audit_events (transferencias y otras acciones)

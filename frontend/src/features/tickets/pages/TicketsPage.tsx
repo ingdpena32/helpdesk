@@ -21,6 +21,7 @@ const priorityOptions: { value: TicketPriority | ''; label: string }[] = [
   { value: 'low', label: 'Baja' },
   { value: 'medium', label: 'Media' },
   { value: 'high', label: 'Alta' },
+  { value: 'critical', label: 'Crítica' },
 ]
 
 function formatDate(iso: string) {
@@ -47,6 +48,7 @@ const PRIORITY_LABEL: Record<string, string> = {
   low: 'Baja',
   medium: 'Media',
   high: 'Alta',
+  critical: 'Crítica',
 }
 
 function statusLabel(status: string) {

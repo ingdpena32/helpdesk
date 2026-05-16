@@ -24,10 +24,16 @@ ALLOWED_CATEGORIES: frozenset[str] = frozenset(
         "Soporte técnico",
         "Bases de datos",
         "Desarrollo",
+        "Soporte TI",
+        "Redes",
+        "RRHH",
+        "Contabilidad",
+        "Compras",
+        "Sin clasificar",
     }
 )
 
-ALLOWED_PRIORITIES: frozenset[str] = frozenset({"low", "medium", "high"})
+ALLOWED_PRIORITIES: frozenset[str] = frozenset({"low", "medium", "high", "critical"})
 ALLOWED_STATUS: frozenset[str] = frozenset({"open", "in_progress", "closed"})
 
 
@@ -39,9 +45,12 @@ def normalize_priority_value(raw: str | None) -> str | None:
         "low": "low",
         "medium": "medium",
         "high": "high",
+        "critical": "critical",
         "baja": "low",
         "media": "medium",
         "alta": "high",
+        "crítica": "critical",
+        "critica": "critical",
     }
     return aliases.get(key)
 
@@ -65,6 +74,8 @@ def _ticket_to_json(t: Ticket) -> dict[str, Any]:
         "sender_name": t.sender_name,
         "sender_email": t.sender_email,
         "sender_user_id": t.sender_user_id,
+        "ai_status": t.ai_status,
+        "ai_motivo": t.ai_motivo,
     }
 
 
@@ -87,7 +98,7 @@ def create_from_request(headers: Mapping[str, str], body: dict[str, Any]) -> tup
     priority_canon = normalize_priority_value(priority)
     if priority_canon not in ALLOWED_PRIORITIES:
         return 400, {
-            "error": "priority debe ser uno de: low, medium, high (o baja, media, alta en español)",
+            "error": "priority debe ser uno de: low, medium, high, critical (o baja, media, alta, crítica en español)",
         }
 
     if not isinstance(category, str):
@@ -95,7 +106,8 @@ def create_from_request(headers: Mapping[str, str], body: dict[str, Any]) -> tup
     category_clean = category.strip()
     if category_clean not in ALLOWED_CATEGORIES:
         return 400, {
-            "error": "category debe ser una de: ERP, Infraestructura, Soporte técnico, Bases de datos, Desarrollo",
+            "error": "category debe ser una de: ERP, Infraestructura, Soporte técnico, Bases de datos, Desarrollo, "
+            "Soporte TI, Redes, RRHH, Contabilidad, Compras, Sin clasificar",
         }
 
     title_clean = title.strip()

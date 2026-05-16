@@ -13,7 +13,7 @@ _SELECT_TICKET_ROW = """
     id, title, description, created_by, priority, category, status,
     created_at, updated_at, assigned_to, resolution, closed_at, deleted_at,
     sender_name, sender_email, raw_from, sender_user_id,
-    transferred_by, transferred_at
+    transferred_by, transferred_at, ai_status, ai_motivo
 """
 
 
@@ -42,6 +42,8 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         sender_user_id,
         transferred_by,
         transferred_at,
+        ai_status,
+        ai_motivo,
     ) = row
     return Ticket(
         id=int(tid),
@@ -63,6 +65,8 @@ def _row_to_ticket(row: tuple[Any, ...]) -> Ticket:
         sender_email=str(sender_email) if sender_email is not None else None,
         raw_from=str(raw_from) if raw_from is not None else None,
         sender_user_id=int(sender_user_id) if sender_user_id is not None else None,
+        ai_status=str(ai_status) if ai_status is not None else "Sin IA",
+        ai_motivo=str(ai_motivo) if ai_motivo is not None else None,
     )
 
 
@@ -187,6 +191,38 @@ def find_by_id(conn: PGConnection, ticket_id: int, *, only_active: bool = True) 
             LIMIT 1
             """,
             (ticket_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return _row_to_ticket(row)
+
+
+def update_ai_classification(
+    conn: PGConnection,
+    ticket_id: int,
+    *,
+    category: str,
+    priority: str,
+    ai_motivo: str | None,
+    ai_status: str,
+) -> Ticket | None:
+    """Actualiza categoría/prioridad/motivo tras clasificación IA (tickets desde correo)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            UPDATE tickets
+            SET
+                category = %s,
+                priority = %s,
+                ai_motivo = %s,
+                ai_status = %s,
+                updated_at = NOW()
+            WHERE id = %s AND deleted_at IS NULL
+            RETURNING
+                {_SELECT_TICKET_ROW.strip()}
+            """,
+            (category, priority, ai_motivo, ai_status, ticket_id),
         )
         row = cur.fetchone()
     if row is None:
@@ -329,9 +365,9 @@ def insert_from_inbound(
             f"""
             INSERT INTO tickets (
                 title, description, created_by, priority, category, email_message_id,
-                sender_name, sender_email, raw_from, sender_user_id
+                sender_name, sender_email, raw_from, sender_user_id, ai_status
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING
                 {_SELECT_TICKET_ROW.strip()}
             """,
@@ -346,6 +382,7 @@ def insert_from_inbound(
                 sender_email,
                 raw_from,
                 sender_user_id,
+                "Procesando IA",
             ),
         )
         row = cur.fetchone()

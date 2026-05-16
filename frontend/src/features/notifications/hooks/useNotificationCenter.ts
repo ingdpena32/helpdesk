@@ -13,7 +13,7 @@ const POLL_MS = 12_000
 
 function priorityLabel(p: string | null): string {
   if (!p) return '—'
-  const m: Record<string, string> = { low: 'baja', medium: 'media', high: 'alta' }
+  const m: Record<string, string> = { low: 'baja', medium: 'media', high: 'alta', critical: 'crítica' }
   return m[p] ?? p
 }
 

@@ -8,5 +8,9 @@ export function useTicketDetailQuery(ticketId: number | undefined) {
     queryKey: ['ticket', ticketId],
     queryFn: () => getTicket(ticketId as number),
     enabled: typeof ticketId === 'number' && ticketId > 0,
+    refetchInterval: (query) => {
+      const d = query.state.data
+      return d?.ai_status === 'Procesando IA' ? 4000 : false
+    },
   })
 }

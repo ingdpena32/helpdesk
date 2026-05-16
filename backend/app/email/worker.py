@@ -16,6 +16,7 @@ import secrets
 import time
 import traceback
 from pathlib import Path
+from typing import Any
 
 import psycopg2.errors
 
@@ -34,7 +35,7 @@ from app.repositories import (
     ticket_repository,
     user_repository,
 )
-from app.services import notification_service
+from app.services import notification_service, ticket_ai_classification
 
 logger = logging.getLogger(__name__)
 
@@ -127,10 +128,10 @@ def _process_parsed(
     parsed: ParsedInbound,
     system_user_id: int,
     attachments_root: Path,
-) -> tuple[str, int | None]:
+) -> tuple[str, int | None, dict[str, Any] | None]:
     """
-    Crea ticket o comentario. Devuelve ('ticket', ticket_id) o ('comment', ticket_id).
-    ticket_id secundario siempre el del hilo.
+    Crea ticket o comentario. Devuelve (modo, ticket_id_del_hilo, payload_clasificación_ia_o_None).
+    El tercer valor solo aplica a tickets nuevos (no comentarios en hilo).
     """
     mid = parsed.message_id
     if not mid:
@@ -163,6 +164,7 @@ def _process_parsed(
         tid = parent_tid
         last_comment_id = comment.id
         mode = "comment"
+        ai_schedule: dict[str, Any] | None = None
     else:
         sender_user_id: int | None = None
         se = (parsed.sender_email or parsed.from_email or "").strip().lower()
@@ -200,6 +202,7 @@ def _process_parsed(
         tid = t.id
         last_comment_id = None
         mode = "ticket"
+        ai_schedule = {"ticket_id": tid, "subject": title, "body": body}
 
     max_bytes = email_config.max_attachment_bytes()
     for part in parsed.attachments:
@@ -218,10 +221,10 @@ def _process_parsed(
             storage_path=rel,
         )
 
-    return mode, tid
+    return mode, tid, ai_schedule
 
 
-def process_one_event(conn, event: dict, *, system_user_id: int, attachments_root: Path) -> None:
+def process_one_event(conn, event: dict, *, system_user_id: int, attachments_root: Path) -> dict[str, Any] | None:
     eid = int(event["id"])
     payload = event["payload"]
     if not isinstance(payload, dict):
@@ -252,8 +255,9 @@ def process_one_event(conn, event: dict, *, system_user_id: int, attachments_roo
     if not parsed.message_id:
         raise ValueError("No se pudo determinar Message-ID")
 
+    schedule_out: dict[str, Any] | None = None
     try:
-        mode, tid = _process_parsed(
+        mode, tid, schedule_out = _process_parsed(
             conn, parsed=parsed, system_user_id=system_user_id, attachments_root=attachments_root
         )
         t = ticket_repository.find_by_id(conn, tid)
@@ -273,10 +277,11 @@ def process_one_event(conn, event: dict, *, system_user_id: int, attachments_roo
                 eid,
                 parsed.message_id,
             )
-            return
+            return None
         raise
 
     ingestion_repository.mark_completed(conn, eid, message_id=parsed.message_id)
+    return schedule_out
 
 
 def run_loop() -> None:
@@ -307,8 +312,14 @@ def run_loop() -> None:
 
                 for ev in events:
                     try:
-                        process_one_event(conn, ev, system_user_id=system_uid, attachments_root=root)
+                        schedule_ai = process_one_event(conn, ev, system_user_id=system_uid, attachments_root=root)
                         conn.commit()
+                        if schedule_ai:
+                            ticket_ai_classification.schedule_ai_classification_after_commit(
+                                ticket_id=int(schedule_ai["ticket_id"]),
+                                subject=str(schedule_ai["subject"]),
+                                body=str(schedule_ai["body"]),
+                            )
                     except psycopg2.errors.UniqueViolation:
                         conn.rollback()
                         ingestion_repository.mark_duplicate(conn, int(ev["id"]))

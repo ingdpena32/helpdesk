@@ -20,6 +20,7 @@ const PRIORITY_LABEL: Record<string, string> = {
   low: 'Baja',
   medium: 'Media',
   high: 'Alta',
+  critical: 'Crítica',
 }
 
 function formatDate(iso: string) {
@@ -305,6 +306,16 @@ export default function TicketDetailPage() {
                   <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Categoría</dt>
                   <dd className="mt-1 text-on-surface">{ticket.category ?? '—'}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Clasificación IA</dt>
+                  <dd className="mt-1 text-on-surface">{ticket.ai_status?.trim() || 'Sin IA'}</dd>
+                </div>
+                {ticket.ai_motivo?.trim() ? (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Motivo IA</dt>
+                    <dd className="mt-1 whitespace-pre-wrap text-on-surface">{ticket.ai_motivo}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Remitente (correo)

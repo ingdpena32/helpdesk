@@ -28,3 +28,5 @@ class Ticket:
     sender_email: Optional[str] = None
     raw_from: Optional[str] = None
     sender_user_id: Optional[int] = None
+    ai_status: str = "Sin IA"
+    ai_motivo: Optional[str] = None

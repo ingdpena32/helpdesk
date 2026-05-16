@@ -14,6 +14,7 @@ from app.controllers import (
     attachment_controller,
     auth_controller,
     notification_controller,
+    ollama_test_controller,
     profile_controller,
     ticket_controller,
 )
@@ -72,6 +73,9 @@ def dispatch(
 
     if m == "GET" and np == "/api/departments":
         return agent_controller.get_departments(json_body, q, h)
+
+    if m == "POST" and np == "/api/test-ollama":
+        return ollama_test_controller.post_test_ollama(json_body, q, h)
 
     if m == "GET" and np == "/api/admin/tickets-export":
         return admin_controller.get_tickets_export(json_body, q, h)

@@ -136,7 +136,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     print(f"Servidor Flask en http://{host}:{port}")
     print("  POST /api/auth/login/     — login")
     print("  POST /api/auth/refresh/   — renovar access")
-    print("  GET  /api/tickets/        — listado tickets")
+    print("  POST /api/test-ollama/    — prueba clasificación Ollama (agente/admin)")
     print("  POST /api/tickets/        — crear ticket")
     print("  GET  /api/tickets/{{id}}  — detalle")
     print("  PATCH /api/tickets/{{id}} — actualizar")

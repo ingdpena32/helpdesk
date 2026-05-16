@@ -1,6 +1,6 @@
 export type TicketStatus = 'open' | 'in_progress' | 'closed'
 
-export type TicketPriority = 'low' | 'medium' | 'high'
+export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
 
 /** Categorías válidas (mismo contrato que el backend). */
 export type TicketCategory =
@@ -9,6 +9,12 @@ export type TicketCategory =
   | 'Soporte técnico'
   | 'Bases de datos'
   | 'Desarrollo'
+  | 'Soporte TI'
+  | 'Redes'
+  | 'RRHH'
+  | 'Contabilidad'
+  | 'Compras'
+  | 'Sin clasificar'
 
 export const TICKET_CATEGORIES: { value: TicketCategory; label: string }[] = [
   { value: 'ERP', label: 'ERP' },
@@ -16,6 +22,12 @@ export const TICKET_CATEGORIES: { value: TicketCategory; label: string }[] = [
   { value: 'Soporte técnico', label: 'Soporte técnico' },
   { value: 'Bases de datos', label: 'Bases de datos' },
   { value: 'Desarrollo', label: 'Desarrollo' },
+  { value: 'Soporte TI', label: 'Soporte TI' },
+  { value: 'Redes', label: 'Redes' },
+  { value: 'RRHH', label: 'RRHH' },
+  { value: 'Contabilidad', label: 'Contabilidad' },
+  { value: 'Compras', label: 'Compras' },
+  { value: 'Sin clasificar', label: 'Sin clasificar' },
 ]
 
 export type TicketAttachmentMeta = {
@@ -58,6 +70,9 @@ export type Ticket = {
   sender_name?: string | null
   sender_email?: string | null
   sender_user_id?: number | null
+  /** Clasificación IA (tickets por correo): Sin IA, Procesando IA, Clasificado, Error. */
+  ai_status?: string | null
+  ai_motivo?: string | null
   attachments?: TicketAttachmentMeta[]
   audit_log?: TicketAuditEntry[]
 }
