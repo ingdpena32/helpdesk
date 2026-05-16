@@ -68,6 +68,8 @@ export type TicketFilters = {
   assigned_to?: number
   /** Filtro por categoría exacta (texto) */
   category?: string
+  page?: number
+  page_size?: number
 }
 
 /** Creación: el backend toma el creador del token (no se envía created_by). */

@@ -4,9 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, apiGetBlob } from '../../../shared/api/client'
 import { useAuth } from '../../auth/context/AuthContext'
-import { listAgents } from '../../agents/services/agentsApi'
+import { listAgents, transferTicket } from '../../agents/services/agentsApi'
 import DeleteTicketConfirmModal from '../components/DeleteTicketConfirmModal'
-import TransferTicketModal from '../components/TransferTicketModal'
 import { useTicketDetailQuery } from '../hooks/useTicketDetailQuery'
 import { deleteTicket, listTicketComments, patchTicket, postTicketComment } from '../services/ticketsApi'
 import type { PatchTicketPayload, TicketAuditEntry, TicketComment, TicketStatus } from '../types/ticket.types'
@@ -75,6 +74,7 @@ export default function TicketDetailPage() {
   const assignFieldId = useId()
   const resolutionFieldId = useId()
   const commentFieldId = useId()
+  const transferFieldId = useId()
 
   const { data: ticket, isLoading: loadingTicket, error: ticketError } = useTicketDetailQuery(
     Number.isFinite(ticketId) && ticketId > 0 ? ticketId : undefined,
@@ -101,7 +101,7 @@ export default function TicketDetailPage() {
   const [commentError, setCommentError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const isAdmin = user?.role === 'admin'
@@ -111,7 +111,7 @@ export default function TicketDetailPage() {
     mutationFn: () => deleteTicket(ticketId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      void queryClient.invalidateQueries({ queryKey: ['tickets', 'count', 'open'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setDeleteOpen(false)
       setDeleteError(null)
       navigate('/tickets', { replace: true })
@@ -134,10 +134,27 @@ export default function TicketDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] })
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setFormError(null)
     },
     onError: (e: unknown) => {
       setFormError(parseApiError(e))
+    },
+  })
+
+  const transferMutation = useMutation({
+    mutationFn: (toUserId: number) => transferTicket(ticketId, toUserId),
+    onMutate: () => {
+      setTransferError(null)
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] })
+      void queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      void queryClient.invalidateQueries({ queryKey: ['agents'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+    onError: (e: unknown) => {
+      setTransferError(parseApiError(e))
     },
   })
 
@@ -236,13 +253,6 @@ export default function TicketDetailPage() {
           setDeleteError(null)
           deleteMutation.mutate()
         }}
-      />
-
-      <TransferTicketModal
-        open={transferOpen && !!ticket}
-        ticketId={ticketId}
-        currentAssigneeId={ticket?.assigned_to ?? null}
-        onClose={() => setTransferOpen(false)}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -434,14 +444,55 @@ export default function TicketDetailPage() {
             <form className="dashboard-panel space-y-4 p-6" onSubmit={onSave}>
               <h3 className="font-architectural text-lg font-bold text-on-surface">Gestión</h3>
 
-              {canStaff ? (
-                <button
-                  type="button"
-                  onClick={() => setTransferOpen(true)}
-                  className="w-full rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary hover:bg-primary/20"
-                >
-                  Transferir ticket
-                </button>
+              {canStaff && ticket ? (
+                <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                  <label
+                    htmlFor={transferFieldId}
+                    className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-on-surface-variant"
+                  >
+                    Transferir a
+                  </label>
+                  <select
+                    id={transferFieldId}
+                    disabled={transferMutation.isPending || agentsQuery.isLoading}
+                    value={ticket.assigned_to != null ? String(ticket.assigned_to) : ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (!v || transferMutation.isPending) return
+                      const nextId = Number(v)
+                      if (!Number.isFinite(nextId) || nextId < 1) return
+                      if (nextId === ticket.assigned_to) return
+                      transferMutation.mutate(nextId)
+                    }}
+                    className="w-full rounded-lg border border-white/10 bg-surface-container-low px-3 py-2.5 text-sm text-on-surface outline-none transition-shadow focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {ticket.assigned_to == null ? (
+                      <option value="">Elige agente o administrador…</option>
+                    ) : null}
+                    {ticket.assigned_to != null &&
+                    !(agentsQuery.data?.results ?? []).some((a) => a.id === ticket.assigned_to && a.is_active) ? (
+                      <option value={String(ticket.assigned_to)}>Asignado actual (#{ticket.assigned_to})</option>
+                    ) : null}
+                    {(agentsQuery.data?.results ?? [])
+                      .filter((a) => a.is_active)
+                      .map((a) => (
+                        <option key={a.id} value={String(a.id)}>
+                          {(a.full_name || a.username).trim()} (#{a.id}) — carga {a.workload}
+                        </option>
+                      ))}
+                  </select>
+                  {transferMutation.isPending ? (
+                    <p className="mt-2 text-xs font-medium text-on-surface-variant">Transfiriendo…</p>
+                  ) : null}
+                  {transferError ? (
+                    <p className="mt-2 text-sm text-red-200" role="alert">
+                      {transferError}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+                    Al elegir otro usuario la reasignación es inmediata y queda en auditoría.
+                  </p>
+                </div>
               ) : null}
 
               <div>

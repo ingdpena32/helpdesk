@@ -161,6 +161,20 @@ def list_filtered(
     return [_row_to_ticket(r) for r in rows]
 
 
+def list_all_non_deleted(conn: PGConnection) -> list[Ticket]:
+    """Todos los tickets activos (no borrados lógicamente), p. ej. exportación admin."""
+    sql = f"""
+        SELECT {_SELECT_TICKET_ROW.strip()}
+        FROM tickets
+        WHERE deleted_at IS NULL
+        ORDER BY id ASC
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql)
+        rows = cur.fetchall()
+    return [_row_to_ticket(r) for r in rows]
+
+
 def find_by_id(conn: PGConnection, ticket_id: int, *, only_active: bool = True) -> Ticket | None:
     active_sql = _active_clause(only_active)
     with conn.cursor() as cur:

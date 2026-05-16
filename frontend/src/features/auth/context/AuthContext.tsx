@@ -19,6 +19,8 @@ type AuthState = {
 type AuthContextValue = AuthState & {
   login: (payload: LoginRequest) => Promise<StoredUser>
   logout: () => void
+  /** Sincroniza el usuario en memoria con lo guardado en localStorage (p. ej. tras actualizar perfil/foto). */
+  refreshSessionUser: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -57,13 +59,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, accessToken: null, ready: true })
   }, [])
 
+  const refreshSessionUser = useCallback(() => {
+    const token = getAccessToken()
+    const stored = getStoredUser()
+    setState((prev) => ({
+      ...prev,
+      accessToken: token,
+      user: token && stored ? stored : null,
+      ready: true,
+    }))
+  }, [])
+
   const value = useMemo(
     () => ({
       ...state,
       login,
       logout,
+      refreshSessionUser,
     }),
-    [state, login, logout],
+    [state, login, logout, refreshSessionUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

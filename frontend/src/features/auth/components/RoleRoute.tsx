@@ -22,7 +22,7 @@ export default function RoleRoute({ allowed, children }: Props) {
       return <Navigate to="/dashboard" replace />
     }
     if (user?.role === 'agent') {
-      return <Navigate to="/dashboard/agente" replace />
+      return <Navigate to="/dashboard" replace />
     }
     return <Navigate to="/login" replace />
   }

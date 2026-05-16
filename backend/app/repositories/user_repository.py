@@ -141,8 +141,8 @@ def list_agents_with_workload(
     include_inactive: bool = False,
 ) -> list[tuple[User, int, str | None]]:
     """
-    Usuarios con rol 'agent' y número de tickets asignados (abiertos + en progreso).
-    Devuelve (User, workload, department_name).
+    Personal operativo (rol agente o administrador) y carga de tickets abiertos/en progreso.
+    Los administradores se listan como agentes operativos con permisos extra en la aplicación.
     """
     active_filter = "" if include_inactive else "AND COALESCE(u.is_active, TRUE) = TRUE"
     sql = f"""
@@ -162,7 +162,7 @@ def list_agents_with_workload(
                d.name AS department_name
         FROM users u
         LEFT JOIN departments d ON d.id = u.department_id
-        WHERE LOWER(TRIM(u.role)) = 'agent'
+        WHERE LOWER(TRIM(u.role)) IN ('agent', 'admin')
         {active_filter}
         ORDER BY u.email
     """

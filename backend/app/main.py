@@ -71,6 +71,8 @@ def create_app() -> Flask:
             r.headers["Content-Disposition"] = f'attachment; filename="{safe}"'
         else:
             r.headers["Content-Disposition"] = f'inline; filename="{safe}"'
+        if bp.cache_control:
+            r.headers["Cache-Control"] = bp.cache_control
         return r
 
     def _handle_dispatch(**_view_args: object) -> Response:

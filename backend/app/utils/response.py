@@ -13,6 +13,7 @@ class BinaryPayload:
     content_type: str
     filename: str
     as_attachment: bool = True
+    cache_control: str | None = None
 
 
 def cors_headers() -> dict[str, str]:

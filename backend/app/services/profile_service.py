@@ -200,4 +200,10 @@ def serve_profile_photo(headers: Mapping[str, str], filename: str) -> tuple[int,
     ext = path.suffix.lower()
     mime = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/png"
     data = path.read_bytes()
-    return 200, BinaryPayload(body=data, content_type=mime, filename=filename, as_attachment=False)
+    return 200, BinaryPayload(
+        body=data,
+        content_type=mime,
+        filename=filename,
+        as_attachment=False,
+        cache_control="private, no-store, max-age=0",
+    )

@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
+import { AuthenticatedProfilePhoto } from '../../../shared/components/AuthenticatedProfilePhoto'
 import type { UserRole } from '../../auth/types/auth.types'
 import { useAuth } from '../../auth/context/AuthContext'
+import { withPhotoCacheBust } from '../../../shared/lib/photoUrl'
 import NewTicketModal from '../../tickets/components/NewTicketModal'
 import NotificationCenter from '../../notifications/components/NotificationCenter'
 
 type NavItem = { to: string; icon: string; label: string; roles: UserRole[] }
 
 const allNavItems: NavItem[] = [
-  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['admin'] },
-  { to: '/dashboard/agente', icon: 'dashboard', label: 'Mi panel', roles: ['agent'] },
+  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['admin', 'agent'] },
   { to: '/tickets', icon: 'confirmation_number', label: 'Tickets', roles: ['admin', 'agent'] },
   { to: '/agentes', icon: 'group', label: 'Agentes', roles: ['admin', 'agent'] },
-  { to: '/mi-perfil', icon: 'badge', label: 'Mi perfil', roles: ['admin', 'agent'] },
   { to: '/settings', icon: 'settings', label: 'Ajustes', roles: ['admin', 'agent'] },
 ]
 
@@ -35,7 +35,7 @@ function AppLayout() {
       ? `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim()
       : user?.user_name ?? 'Usuario')
 
-  const avatarUrl = user?.profile_photo_url?.trim() || null
+  const avatarPath = withPhotoCacheBust(user?.profile_photo_url, user?.avatar_cache_bust)
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
@@ -111,25 +111,37 @@ function AppLayout() {
             <span className="material-symbols-outlined text-[22px]">help_outline</span>
           </button>
           <div className="hidden h-8 w-px bg-white/10 sm:block" />
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold leading-tight text-on-surface">{displayName}</p>
-              <p className="text-[11px] leading-tight text-on-surface-variant">
-                {role === 'admin' ? 'Administrador' : 'Agente'}
+          <button
+            type="button"
+            onClick={() => navigate('/mi-perfil')}
+            className="group flex max-w-[min(100%,18rem)] items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 text-left transition-colors hover:border-white/10 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+            aria-label="Ir a mi perfil"
+          >
+            <div className="hidden min-w-0 flex-1 text-right sm:block">
+              <p className="truncate text-sm font-semibold leading-tight text-on-surface transition-colors group-hover:text-primary">
+                {displayName}
+              </p>
+              <p className="truncate text-[11px] leading-tight text-on-surface-variant">
+                {role === 'admin' ? 'Administrador · operativo' : 'Agente'}
               </p>
             </div>
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface-container-high text-sm font-bold text-primary shadow-md shadow-black/30"
-              role="img"
-              aria-label="Avatar de usuario"
+              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface-container-high text-sm font-bold text-primary shadow-md shadow-black/30 transition-transform group-hover:scale-[1.03] group-hover:border-primary/50"
+              role="presentation"
             >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              {avatarPath ? (
+                <AuthenticatedProfilePhoto
+                  key={`hdr-av-${user?.avatar_cache_bust ?? 0}-${avatarPath}`}
+                  path={avatarPath}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  fallback={displayName.slice(0, 1).toUpperCase()}
+                />
               ) : (
                 displayName.slice(0, 1).toUpperCase()
               )}
             </div>
-          </div>
+          </button>
         </div>
       </header>
 

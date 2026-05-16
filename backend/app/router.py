@@ -9,6 +9,7 @@ import re
 from typing import Any, Callable, Mapping
 
 from app.controllers import (
+    admin_controller,
     agent_controller,
     attachment_controller,
     auth_controller,
@@ -71,6 +72,9 @@ def dispatch(
 
     if m == "GET" and np == "/api/departments":
         return agent_controller.get_departments(json_body, q, h)
+
+    if m == "GET" and np == "/api/admin/tickets-export":
+        return admin_controller.get_tickets_export(json_body, q, h)
 
     _prof_fn = re.match(r"^/api/uploads/profiles/([^/]+)$", np)
     if m == "GET" and _prof_fn:

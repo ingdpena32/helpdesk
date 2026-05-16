@@ -16,6 +16,8 @@ export type StoredUser = {
   phone?: string
   department_id?: number | null
   professional_role?: string
+  /** Timestamp para anular caché del navegador en URLs de foto de perfil. */
+  avatar_cache_bust?: number
 }
 
 export function getAccessToken(): string | null {

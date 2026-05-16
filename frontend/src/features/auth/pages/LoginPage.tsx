@@ -4,10 +4,6 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/client'
 import { useAuth } from '../context/AuthContext'
 
-function dashboardPathForRole(role: 'admin' | 'agent'): string {
-  return role === 'admin' ? '/dashboard' : '/dashboard/agente'
-}
-
 export default function LoginPage() {
   const { login, accessToken, user, ready } = useAuth()
   const navigate = useNavigate()
@@ -20,7 +16,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   if (ready && accessToken && user) {
-    return <Navigate to={from && from !== '/login' ? from : dashboardPathForRole(user.role)} replace />
+    return <Navigate to={from && from !== '/login' ? from : '/dashboard'} replace />
   }
 
   async function onSubmit(e: FormEvent) {
@@ -28,15 +24,12 @@ export default function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const loggedIn = await login({
+      await login({
         user_name: userName.trim(),
         password,
       })
-      const fallback = dashboardPathForRole(loggedIn.role)
-      const canUseFrom =
-        Boolean(from) &&
-        from !== '/login' &&
-        (loggedIn.role === 'admin' || (from && !from.startsWith('/agentes')))
+      const fallback = '/dashboard'
+      const canUseFrom = Boolean(from) && from !== '/login'
       navigate(canUseFrom && from ? from : fallback, { replace: true })
     } catch (err) {
       let message = 'No se pudo iniciar sesión.'

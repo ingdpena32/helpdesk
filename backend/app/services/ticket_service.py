@@ -407,7 +407,7 @@ def transfer_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, 
             actor, err_status, err_body = auth_service.require_user(conn, headers)
             if actor is None:
                 return err_status or 401, err_body or {"error": "No autorizado"}
-            if not permissions.is_staff(actor.role):
+            if not permissions.is_operative_staff(actor.role):
                 return 403, {"error": "No autorizado para transferir tickets"}
 
             ticket = ticket_repository.find_by_id(conn, ticket_id)
@@ -454,6 +454,9 @@ def transfer_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, 
         return 500, {"error": "No se pudo transferir el ticket."}
 
     return 200, _ticket_to_json(updated)
+
+
+def list_comments(headers: Mapping[str, str], ticket_id: int) -> tuple[int, dict]:
     try:
         with get_connection() as conn:
             user, err_status, err_body = auth_service.require_user(conn, headers)
@@ -522,3 +525,35 @@ def add_comment(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any]
         "created_at": c.created_at.isoformat() if isinstance(c.created_at, datetime) else c.created_at,
     }
     return 201, out
+
+
+def export_tickets_snapshot(headers: Mapping[str, str]) -> tuple[int, dict]:
+    """
+    GET /api/admin/tickets-export — solo administrador.
+    JSON con tickets activos, asignación, transferencias y cola breve de auditoría.
+    """
+    try:
+        with get_connection() as conn:
+            user, err_status, err_body = auth_service.require_user(conn, headers)
+            if user is None:
+                return err_status or 401, err_body or {"error": "No autorizado"}
+            if not permissions.can_export_system_data(user.role):
+                return 403, {"error": "Solo administradores pueden exportar este informe"}
+
+            rows = ticket_repository.list_all_non_deleted(conn)
+            tickets_out: list[dict[str, Any]] = []
+            for t in rows:
+                entry = dict(_ticket_to_json(t))
+                entry["audit_tail"] = ticket_audit_repository.list_for_ticket(conn, t.id, limit=30)
+                tickets_out.append(entry)
+
+            generated = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+
+        return 200, {
+            "schema": "helpdesk_tickets_export_v1",
+            "generated_at": generated,
+            "ticket_count": len(tickets_out),
+            "tickets": tickets_out,
+        }
+    except Exception:
+        return 500, {"error": "No se pudo generar la exportación."}

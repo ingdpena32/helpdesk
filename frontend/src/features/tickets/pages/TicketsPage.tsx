@@ -90,7 +90,7 @@ function TicketsPage() {
     mutationFn: deleteTicket,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      void queryClient.invalidateQueries({ queryKey: ['tickets', 'count', 'open'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setDeleteTarget(null)
       setDeleteError(null)
     },

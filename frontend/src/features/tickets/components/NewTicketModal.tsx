@@ -48,6 +48,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
     mutationFn: createTicket,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setTitle('')
       setDescription('')
       setPriority('medium')

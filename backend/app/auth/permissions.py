@@ -17,6 +17,19 @@ def is_staff(role: str) -> bool:
     return r in ("admin", "agent")
 
 
+def is_operative_staff(role: str) -> bool:
+    """
+    Personal que opera tickets (resolución, asignación, transferencia).
+    Un administrador cuenta también como agente operativo.
+    """
+    return is_staff(role)
+
+
+def can_export_system_data(role: str) -> bool:
+    """Exportaciones, backups lógicos y datos globales (solo admin)."""
+    return is_admin(role)
+
+
 def can_manage_agent_directory(role: str) -> bool:
     """Listar agentes (vista de directorio)."""
     return is_staff(role)

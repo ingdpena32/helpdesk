@@ -6,7 +6,6 @@ import RootRedirect from '../features/auth/components/RootRedirect'
 import LoginPage from '../features/auth/pages/LoginPage'
 import AgentsPage from '../features/agents/pages/AgentsPage'
 import ProfilePage from '../features/profile/pages/ProfilePage'
-import AgentDashboardPage from '../features/dashboard/pages/AgentDashboardPage'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import SettingsPage from '../features/settings/pages/SettingsPage'
 import AppLayout from '../features/shell/components/AppLayout'
@@ -24,19 +23,12 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <RoleRoute allowed={['admin']}>
+              <RoleRoute allowed={['admin', 'agent']}>
                 <DashboardPage />
               </RoleRoute>
             }
           />
-          <Route
-            path="/dashboard/agente"
-            element={
-              <RoleRoute allowed={['agent']}>
-                <AgentDashboardPage />
-              </RoleRoute>
-            }
-          />
+          <Route path="/dashboard/agente" element={<Navigate to="/dashboard" replace />} />
           <Route path="/tickets/:ticketId" element={<TicketDetailPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route

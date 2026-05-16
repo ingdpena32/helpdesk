@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../../../shared/api/client'
 import { getAccessToken, getRefreshToken, getStoredUser, persistSession } from '../../../shared/api/authStorage'
+import { AuthenticatedProfilePhoto } from '../../../shared/components/AuthenticatedProfilePhoto'
+import { withPhotoCacheBust } from '../../../shared/lib/photoUrl'
 import { useAuth } from '../../auth/context/AuthContext'
 import { getMyProfile, patchMyProfile, uploadProfilePhoto, type MyProfile } from '../services/profileApi'
 
@@ -24,11 +26,14 @@ function parseApiError(err: unknown): string {
   return err.message || 'Error.'
 }
 
-function mergeStoredUser(profile: MyProfile) {
+type MergeOpts = { bumpAvatar?: boolean }
+
+function mergeStoredUser(profile: MyProfile, opts?: MergeOpts) {
   const token = getAccessToken()
   const refresh = getRefreshToken()
   const prev = getStoredUser()
   if (!token || !refresh || !prev) return
+  const nextBust = opts?.bumpAvatar === true ? Date.now() : prev.avatar_cache_bust
   persistSession(token, refresh, {
     ...prev,
     first_name: profile.full_name?.trim() ? profile.full_name.trim().split(/\s+/)[0] : prev.first_name,
@@ -43,16 +48,32 @@ function mergeStoredUser(profile: MyProfile) {
     phone: profile.phone,
     department_id: profile.department_id,
     professional_role: profile.professional_role,
+    ...(nextBust !== undefined ? { avatar_cache_bust: nextBust } : {}),
   })
+}
+
+function CameraEditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h3l1.5-2h7L17 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.25" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M18.5 9.5h.01" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  )
 }
 
 export default function ProfilePage() {
   const queryClient = useQueryClient()
-  const { user: authUser } = useAuth()
+  const { user: authUser, refreshSessionUser } = useAuth()
   const nameId = useId()
   const phoneId = useId()
   const genderId = useId()
-  const fileId = useId()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -83,6 +104,7 @@ export default function ProfilePage() {
     mutationFn: patchMyProfile,
     onSuccess: (data) => {
       mergeStoredUser(data)
+      refreshSessionUser()
       void queryClient.invalidateQueries({ queryKey: ['me', 'profile'] })
       setBanner({ type: 'ok', text: 'Perfil actualizado correctamente.' })
     },
@@ -97,7 +119,8 @@ export default function ProfilePage() {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
       const fresh = await queryClient.fetchQuery({ queryKey: ['me', 'profile'], queryFn: getMyProfile })
-      mergeStoredUser(fresh)
+      mergeStoredUser(fresh, { bumpAvatar: true })
+      refreshSessionUser()
       setBanner({ type: 'ok', text: 'Foto de perfil actualizada.' })
       void queryClient.invalidateQueries({ queryKey: ['me', 'profile'] })
     },
@@ -107,7 +130,8 @@ export default function ProfilePage() {
   })
 
   const p = profileQuery.data
-  const displayPhoto = previewUrl || (p?.profile_photo_url ? p.profile_photo_url : null)
+  const bust = authUser?.avatar_cache_bust
+  const serverPhotoPath = withPhotoCacheBust(p?.profile_photo_url ?? null, bust ?? null)
   const initials =
     (authUser?.full_name || authUser?.user_name || '?')
       .trim()
@@ -122,6 +146,11 @@ export default function ProfilePage() {
       phone: phone.trim() || null,
       gender: gender || null,
     })
+  }
+
+  function onAvatarControlClick() {
+    if (photoMutation.isPending) return
+    fileInputRef.current?.click()
   }
 
   function onFileChange(files: FileList | null) {
@@ -139,7 +168,11 @@ export default function ProfilePage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(URL.createObjectURL(f))
     photoMutation.mutate(f)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
+
+  const roleLabel =
+    p?.role === 'admin' ? 'Administrador (también agente operativo)' : 'Agente'
 
   return (
     <section className="mx-auto max-w-3xl space-y-8">
@@ -174,20 +207,53 @@ export default function ProfilePage() {
         <div className="dashboard-panel overflow-hidden p-0">
           <div className="border-b border-white/10 bg-gradient-to-br from-primary/15 to-transparent px-8 py-10">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-              <div className="relative">
-                {displayPhoto ? (
+              <div className="relative shrink-0">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="sr-only"
+                  aria-label="Seleccionar imagen de perfil"
+                  tabIndex={-1}
+                  onChange={(e) => onFileChange(e.target.files)}
+                />
+                {previewUrl ? (
                   <img
-                    src={displayPhoto}
+                    key={`pv-${previewUrl}`}
+                    src={previewUrl}
                     alt=""
                     className="h-28 w-28 rounded-full border-2 border-primary/40 object-cover shadow-lg shadow-black/40"
+                  />
+                ) : serverPhotoPath ? (
+                  <AuthenticatedProfilePhoto
+                    key={`srv-${serverPhotoPath}`}
+                    path={serverPhotoPath}
+                    alt=""
+                    className="h-28 w-28 rounded-full border-2 border-primary/40 object-cover shadow-lg shadow-black/40"
+                    fallback={
+                      <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-primary/40 bg-surface-container-high text-2xl font-bold text-primary shadow-lg">
+                        {initials}
+                      </div>
+                    }
                   />
                 ) : (
                   <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-primary/40 bg-surface-container-high text-2xl font-bold text-primary shadow-lg">
                     {initials}
                   </div>
                 )}
+                <button
+                  type="button"
+                  onClick={onAvatarControlClick}
+                  disabled={photoMutation.isPending}
+                  title="Cambiar foto de perfil"
+                  className="group absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-primary text-slate-900 shadow-lg shadow-black/40 transition-all hover:scale-105 hover:shadow-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="transition-transform group-hover:-translate-y-px">
+                    <CameraEditIcon />
+                  </span>
+                </button>
                 {photoMutation.isPending ? (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                  <span className="absolute -bottom-8 left-1/2 w-max -translate-x-1/2 rounded-full bg-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
                     Subiendo…
                   </span>
                 ) : null}
@@ -200,7 +266,7 @@ export default function ProfilePage() {
                 <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Rol permisos</dt>
-                    <dd className="text-on-surface">{p.role === 'admin' ? 'Administrador' : 'Agente'}</dd>
+                    <dd className="text-on-surface">{roleLabel}</dd>
                   </div>
                   <div>
                     <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Cargo</dt>
@@ -215,25 +281,14 @@ export default function ProfilePage() {
                     <dd className="text-on-surface">{p.document_number?.trim() || '—'}</dd>
                   </div>
                 </dl>
+                <p className="mt-4 text-xs text-on-surface-variant">
+                  JPG o PNG, máximo 2 MB. La vista previa es inmediata y la foto se actualiza en toda la app sin recargar.
+                </p>
               </div>
             </div>
           </div>
 
           <div className="space-y-8 px-8 py-8">
-            <div>
-              <label htmlFor={fileId} className="mb-2 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Cambiar foto (JPG/PNG, máx. 2MB)
-              </label>
-              <input
-                id={fileId}
-                type="file"
-                accept="image/jpeg,image/png"
-                disabled={photoMutation.isPending}
-                onChange={(e) => onFileChange(e.target.files)}
-                className="block w-full max-w-md text-sm text-on-surface-variant file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-slate-900"
-              />
-            </div>
-
             <form className="space-y-4" onSubmit={onSaveBasics}>
               <h4 className="font-architectural text-lg font-bold text-on-surface">Datos editables</h4>
               <p className="text-xs text-on-surface-variant">

@@ -16,6 +16,11 @@ export default function AgentsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editAgent, setEditAgent] = useState<Agent | null>(null)
 
+  /** Cuenta administradora del sistema: no se gestiona como agente desde esta UI. */
+  function isProtectedAdminAccount(a: Agent): boolean {
+    return (a.system_role || '').toLowerCase() === 'admin'
+  }
+
   const deleteMutation = useMutation({
     mutationFn: deleteAgent,
     onSuccess: () => {
@@ -112,23 +117,27 @@ export default function AgentsPage() {
                   <td className="px-6 py-4 text-on-surface-variant">{a.is_active ? 'Sí' : 'No'}</td>
                   {isAdmin ? (
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditAgent(a)}
-                          className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-white/5"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteClick(a)}
-                          disabled={deleteMutation.isPending || !a.is_active}
-                          className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Desactivar
-                        </button>
-                      </div>
+                      {isProtectedAdminAccount(a) ? (
+                        <span className="text-xs text-on-surface-variant">—</span>
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditAgent(a)}
+                            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-white/5"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteClick(a)}
+                            disabled={deleteMutation.isPending || !a.is_active}
+                            className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Desactivar
+                          </button>
+                        </div>
+                      )}
                     </td>
                   ) : null}
                 </tr>
