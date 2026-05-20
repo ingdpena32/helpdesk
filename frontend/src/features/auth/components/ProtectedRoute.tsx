@@ -8,7 +8,7 @@ export default function ProtectedRoute() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b1120] text-on-surface-variant">
+      <div className="flex min-h-screen items-center justify-center bg-surface text-on-surface-variant">
         Cargando…
       </div>
     )

@@ -68,7 +68,7 @@ export default function AgentsPage() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="btn-new-ticket shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-slate-900"
+            className="btn-new-ticket shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold "
           >
             Crear agente
           </button>
@@ -79,7 +79,7 @@ export default function AgentsPage() {
         <div className="dashboard-panel overflow-x-auto p-0 xl:col-span-12">
           <table className="w-full min-w-[880px] border-separate border-spacing-0 text-left">
             <thead>
-              <tr className="border-b border-white/10 bg-surface-container-low/60 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+              <tr className="border-b border-overlay/10 bg-surface-container-low/60 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                 <th className="px-6 py-4">Agente</th>
                 <th className="px-6 py-4">Email corporativo</th>
                 <th className="px-6 py-4">Departamento</th>
@@ -114,7 +114,7 @@ export default function AgentsPage() {
               ) : null}
               {!isLoading && !(isFetching && searchQ)
                 ? visibleAgents.map((a) => (
-                <tr key={a.id} className="border-b border-white/5 text-sm text-on-surface">
+                <tr key={a.id} className="border-b border-overlay/5 text-sm text-on-surface">
                   <td className="px-6 py-4 font-medium">
                     <div className="flex flex-col">
                       <span>{(a.full_name || a.username).trim()}</span>

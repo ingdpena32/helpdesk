@@ -1,0 +1,100 @@
+body.dark {
+  color-scheme: dark;
+
+  --color-surface: 11 17 32;
+  --color-surface-dim: 11 17 32;
+  --color-surface-container: 30 41 59;
+  --color-surface-container-high: 51 65 85;
+  --color-surface-container-highest: 71 85 105;
+  --color-surface-container-low: 17 24 39;
+  --color-surface-container-lowest: 15 23 42;
+
+  --color-primary: 79 209 197;
+  --color-primary-container: 44 122 123;
+  --color-primary-fixed: 94 234 212;
+  --color-secondary: 148 163 184;
+  --color-secondary-container: 71 85 105;
+  --color-tertiary: 246 173 85;
+  --color-error: 248 113 113;
+  --color-outline: 100 116 139;
+  --color-outline-variant: 51 65 85;
+
+  --color-on-surface: 248 250 252;
+  --color-on-surface-variant: 148 163 184;
+  --color-on-primary-container: 240 253 250;
+  --color-on-secondary-container: 203 213 225;
+
+  --color-overlay: 255 255 255;
+  --color-scrim: 0 0 0;
+  --color-elevation: 0 0 0;
+
+  --glass-panel-bg: rgb(30 41 59 / 0.75);
+  --panel-border: rgb(148 163 184 / 0.12);
+  --panel-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45);
+  --kpi-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.35);
+  --kpi-hover-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.5);
+  --range-pill-bg: rgb(15 23 42 / 0.85);
+  --range-pill-inset: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  --btn-primary-fg: 15 23 42;
+  --btn-secondary-border: rgb(255 255 255 / 0.15);
+  --btn-secondary-hover-bg: rgb(255 255 255 / 0.08);
+  --btn-secondary-hover-fg: 248 250 252;
+  --btn-outline-border: rgb(255 255 255 / 0.12);
+  --btn-outline-hover-bg: rgb(255 255 255 / 0.07);
+  --btn-icon-hover-bg: rgb(255 255 255 / 0.1);
+  --nav-hover-bg: rgb(255 255 255 / 0.06);
+}
+
+body.light {
+  color-scheme: light;
+
+  --color-surface: 241 245 249;
+  --color-surface-dim: 226 232 240;
+  --color-surface-container: 255 255 255;
+  --color-surface-container-high: 248 250 252;
+  --color-surface-container-highest: 226 232 240;
+  --color-surface-container-low: 248 250 252;
+  --color-surface-container-lowest: 255 255 255;
+
+  --color-primary: 13 148 136;
+  --color-primary-container: 20 184 166;
+  --color-primary-fixed: 45 212 191;
+  --color-secondary: 100 116 139;
+  --color-secondary-container: 203 213 225;
+  --color-tertiary: 217 119 6;
+  --color-error: 220 38 38;
+  --color-outline: 148 163 184;
+  --color-outline-variant: 203 213 225;
+
+  --color-on-surface: 15 23 42;
+  --color-on-surface-variant: 100 116 139;
+  --color-on-primary-container: 4 47 46;
+  --color-on-secondary-container: 51 65 85;
+
+  --color-overlay: 15 23 42;
+  --color-scrim: 15 23 42;
+  --color-elevation: 15 23 42;
+
+  --glass-panel-bg: rgb(255 255 255 / 0.88);
+  --panel-border: rgb(148 163 184 / 0.28);
+  --panel-shadow: 0 20px 40px -16px rgb(15 23 42 / 0.12);
+  --kpi-shadow: 0 8px 24px -8px rgb(15 23 42 / 0.1);
+  --kpi-hover-shadow: 0 16px 32px -12px rgb(15 23 42 / 0.14);
+  --range-pill-bg: rgb(255 255 255 / 0.95);
+  --range-pill-inset: inset 0 1px 0 0 rgb(255 255 255 / 0.8);
+  --btn-primary-fg: 255 255 255;
+  --btn-secondary-border: rgb(15 23 42 / 0.12);
+  --btn-secondary-hover-bg: rgb(15 23 42 / 0.06);
+  --btn-secondary-hover-fg: 15 23 42;
+  --btn-outline-border: rgb(15 23 42 / 0.12);
+  --btn-outline-hover-bg: rgb(15 23 42 / 0.05);
+  --btn-icon-hover-bg: rgb(15 23 42 / 0.06);
+  --nav-hover-bg: rgb(15 23 42 / 0.05);
+}
+
+body.dark,
+body.light {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}

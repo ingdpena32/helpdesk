@@ -57,7 +57,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0b1120] px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface px-4">
       <div
         className="pointer-events-none absolute -left-32 -top-32 h-72 w-72 rounded-full bg-primary/15 blur-[90px]"
         aria-hidden
@@ -67,7 +67,7 @@ export default function LoginPage() {
         aria-hidden
       />
 
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#1e293b] p-8 shadow-2xl shadow-black/40">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-overlay/10 bg-surface-container p-8 shadow-2xl shadow-elevation/40">
         <BrandMark variant="login" />
 
         <form className="space-y-5" onSubmit={onSubmit}>
@@ -82,7 +82,7 @@ export default function LoginPage() {
               autoComplete="username"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 placeholder:text-on-surface-variant/50 focus:border-primary/40 focus:ring-2"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 placeholder:text-on-surface-variant/50 focus:border-primary/40 focus:ring-2"
               placeholder="Nombre de usuario"
               required
             />
@@ -98,13 +98,13 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 focus:border-primary/40 focus:ring-2"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 focus:border-primary/40 focus:ring-2"
               required
             />
           </div>
 
           {error ? (
-            <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+            <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-error" role="alert">
               {error}
             </p>
           ) : null}
@@ -112,7 +112,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-slate-900"
+            className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold "
           >
             {submitting ? 'Entrando…' : 'Iniciar sesión'}
           </button>

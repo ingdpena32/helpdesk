@@ -188,7 +188,7 @@ export default function ProfilePage() {
           className={`rounded-xl border px-4 py-3 text-sm ${
             banner.type === 'ok'
               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
-              : 'border-red-500/30 bg-red-500/10 text-red-200'
+              : 'border-red-500/30 bg-red-500/10 text-error'
           }`}
           role="status"
         >
@@ -200,12 +200,12 @@ export default function ProfilePage() {
         <p className="text-on-surface-variant">Cargando perfil…</p>
       ) : null}
       {profileQuery.error ? (
-        <p className="text-sm text-red-200">{(profileQuery.error as Error).message}</p>
+        <p className="text-sm text-error">{(profileQuery.error as Error).message}</p>
       ) : null}
 
       {p ? (
         <div className="dashboard-panel overflow-hidden p-0">
-          <div className="border-b border-white/10 bg-gradient-to-br from-primary/15 to-transparent px-8 py-10">
+          <div className="border-b border-overlay/10 bg-gradient-to-br from-primary/15 to-transparent px-8 py-10">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
               <div className="relative shrink-0">
                 <input
@@ -222,14 +222,14 @@ export default function ProfilePage() {
                     key={`pv-${previewUrl}`}
                     src={previewUrl}
                     alt=""
-                    className="h-28 w-28 rounded-full border-2 border-primary/40 object-cover shadow-lg shadow-black/40"
+                    className="h-28 w-28 rounded-full border-2 border-primary/40 object-cover shadow-lg shadow-elevation/40"
                   />
                 ) : serverPhotoPath ? (
                   <AuthenticatedProfilePhoto
                     key={`srv-${serverPhotoPath}`}
                     path={serverPhotoPath}
                     alt=""
-                    className="h-28 w-28 rounded-full border-2 border-primary/40 object-cover shadow-lg shadow-black/40"
+                    className="h-28 w-28 rounded-full border-2 border-primary/40 object-cover shadow-lg shadow-elevation/40"
                     fallback={
                       <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-primary/40 bg-surface-container-high text-2xl font-bold text-primary shadow-lg">
                         {initials}
@@ -246,7 +246,7 @@ export default function ProfilePage() {
                   onClick={onAvatarControlClick}
                   disabled={photoMutation.isPending}
                   title="Cambiar foto de perfil"
-                  className="group absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-primary text-slate-900 shadow-lg shadow-black/40 transition-all hover:scale-105 hover:shadow-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  className="group absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-primary  shadow-lg shadow-elevation/40 transition-all hover:scale-105 hover:shadow-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="transition-transform group-hover:-translate-y-px">
                     <CameraEditIcon />
@@ -302,7 +302,7 @@ export default function ProfilePage() {
                   id={nameId}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                  className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                 />
               </div>
               <div>
@@ -313,7 +313,7 @@ export default function ProfilePage() {
                   id={phoneId}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                  className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                 />
               </div>
               <div>
@@ -324,7 +324,7 @@ export default function ProfilePage() {
                   id={genderId}
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                  className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                 >
                   <option value="">—</option>
                   {GENDERS.map((g) => (

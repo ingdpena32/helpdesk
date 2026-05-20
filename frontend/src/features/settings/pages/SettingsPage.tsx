@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { ApiError } from '../../../shared/api/client'
 import { useAuth } from '../../auth/context/AuthContext'
 import { canExportSystemData, canManageCategories } from '../../auth/permissions'
+import AppearanceSettings from '../components/AppearanceSettings'
 import CategoryAdminPanel from '../../categories/components/CategoryAdminPanel'
 import { useCategoriesQuery } from '../../categories/hooks/useCategoriesQuery'
 import { fetchTicketsExport } from '../services/adminExportApi'
@@ -54,6 +55,8 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <AppearanceSettings />
+
       {showCategories ? (
         <CategoryAdminPanel
           categories={categoriesQuery.data?.results ?? []}
@@ -69,7 +72,7 @@ export default function SettingsPage() {
             auditoría por ticket. Uso interno y respaldo lógico.
           </p>
           {exportMutation.isError ? (
-            <p className="text-sm text-red-200" role="alert">
+            <p className="text-sm text-error" role="alert">
               {exportErrorMessage(exportMutation.error)}
             </p>
           ) : null}

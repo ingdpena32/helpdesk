@@ -100,7 +100,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-scrim/60 px-4 py-8 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -110,7 +110,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#1e293b] p-6 shadow-2xl shadow-black/50"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-overlay/10 bg-surface-container p-6 shadow-2xl shadow-elevation/50"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -142,7 +142,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 focus:border-primary/40 focus:ring-2"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 focus:border-primary/40 focus:ring-2"
               placeholder="Resumen breve del problema"
               maxLength={500}
               required
@@ -158,7 +158,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full resize-y rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 focus:border-primary/40 focus:ring-2"
+              className="w-full resize-y rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none ring-primary/30 focus:border-primary/40 focus:ring-2"
               placeholder="Detalle del incidente o solicitud"
               required
             />
@@ -173,7 +173,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
                 id={priorityId}
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TicketPriority)}
-                className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
               >
                 {TICKET_PRIORITY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -191,7 +191,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 disabled={categoriesQuery.isLoading || categoryOptions.length === 0}
-                className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:opacity-60"
+                className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:opacity-60"
               >
                 {categoryOptions.length === 0 ? (
                   <option value="">Sin categorías disponibles</option>
@@ -207,7 +207,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
           </div>
 
           {formError ? (
-            <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+            <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-error" role="alert">
               {formError}
             </p>
           ) : null}
@@ -223,7 +223,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="btn-new-ticket rounded-xl px-5 py-2.5 text-sm font-bold text-slate-900"
+              className="btn-new-ticket rounded-xl px-5 py-2.5 text-sm font-bold "
             >
               {mutation.isPending ? 'Creando…' : 'Crear ticket'}
             </button>

@@ -19,12 +19,12 @@ export default function DeleteCategoryConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-category-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-surface-container-high p-6 shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl border border-overlay/10 bg-surface-container-high p-6 shadow-2xl">
         <h2 id="delete-category-title" className="font-architectural text-lg font-bold text-on-surface">
           Eliminar categoría
         </h2>
@@ -33,7 +33,7 @@ export default function DeleteCategoryConfirmModal({
           usa.
         </p>
         {error ? (
-          <p className="mt-3 text-sm text-red-200" role="alert">
+          <p className="mt-3 text-sm text-error" role="alert">
             {error}
           </p>
         ) : null}

@@ -107,7 +107,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-scrim/60 px-4 py-8 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -116,7 +116,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#1e293b] p-6 shadow-2xl shadow-black/50"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-overlay/10 bg-surface-container p-6 shadow-2xl shadow-elevation/50"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -146,7 +146,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
               required
             />
           </div>
@@ -159,7 +159,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               type="email"
               value={corporateEmail}
               onChange={(e) => setCorporateEmail(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <div>
@@ -170,7 +170,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               id={fullId}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <div>
@@ -181,7 +181,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               id={deptId}
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             >
               <option value="">—</option>
               {(deps.data?.results ?? []).map((d) => (
@@ -199,7 +199,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               id={phoneId}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <div>
@@ -210,7 +210,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               id={docId}
               value={documentNumber}
               onChange={(e) => setDocumentNumber(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <div>
@@ -221,7 +221,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               id={genderId}
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             >
               <option value="">—</option>
               <option value="male">Masculino</option>
@@ -238,7 +238,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               id={profId}
               value={professionalRole}
               onChange={(e) => setProfessionalRole(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <div>
@@ -251,13 +251,13 @@ export default function CreateAgentModal({ open, onClose }: Props) {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
               minLength={6}
               required
             />
           </div>
           {formError ? (
-            <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+            <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-error" role="alert">
               {formError}
             </p>
           ) : null}

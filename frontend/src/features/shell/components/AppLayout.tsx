@@ -26,10 +26,10 @@ function HeaderSearch() {
 
   return (
     <div
-      className={`flex max-w-xl flex-1 items-center gap-3 rounded-full border px-4 py-2 shadow-inner shadow-black/20 transition-colors ${
+      className={`flex max-w-xl flex-1 items-center gap-3 rounded-full border px-4 py-2 shadow-inner shadow-elevation/20 transition-colors ${
         scope
-          ? 'border-white/10 bg-surface-container/40 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20'
-          : 'border-white/5 bg-surface-container/20 opacity-60'
+          ? 'border-overlay/10 bg-surface-container/40 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20'
+          : 'border-overlay/5 bg-surface-container/20 opacity-60'
       }`}
     >
       <span className="material-symbols-outlined text-on-surface-variant">search</span>
@@ -82,7 +82,7 @@ function AppLayout() {
     <div className="min-h-screen bg-surface text-on-surface">
       <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} />
 
-      <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col overflow-y-auto border-r border-white/5 bg-surface-container-low py-6">
+      <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col overflow-y-auto border-r border-overlay/5 bg-surface-container-low py-6">
         <BrandMark variant="sidebar" />
 
         <nav className="flex flex-1 flex-col space-y-1 px-3">
@@ -93,8 +93,8 @@ function AppLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'border-l-[3px] border-primary bg-white/5 text-primary shadow-sm shadow-black/20'
-                    : 'border-l-[3px] border-transparent text-on-surface-variant hover:bg-white/[0.04] hover:text-on-surface'
+                    ? 'border-l-[3px] border-primary bg-overlay/5 text-primary shadow-sm shadow-elevation/20'
+                    : 'border-l-[3px] border-transparent text-on-surface-variant hover:bg-overlay/[0.04] hover:text-on-surface'
                 }`
               }
             >
@@ -108,7 +108,7 @@ function AppLayout() {
           <button
             type="button"
             onClick={() => setNewTicketOpen(true)}
-            className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-slate-900 transition-transform"
+            className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold  transition-transform"
           >
             <span className="material-symbols-outlined text-[20px]">add</span>
             Nuevo ticket
@@ -124,7 +124,7 @@ function AppLayout() {
         </div>
       </aside>
 
-      <header className="fixed left-64 right-0 top-0 z-40 flex h-16 items-center justify-between gap-6 overflow-visible border-b border-white/5 bg-surface/90 px-8 py-3 backdrop-blur-xl">
+      <header className="fixed left-64 right-0 top-0 z-40 flex h-16 items-center justify-between gap-6 overflow-visible border-b border-overlay/5 bg-surface/90 px-8 py-3 backdrop-blur-xl">
         <HeaderSearch />
 
         <div className="flex shrink-0 items-center gap-5 text-on-surface-variant">
@@ -132,11 +132,11 @@ function AppLayout() {
           <button type="button" className="btn-icon p-1.5">
             <span className="material-symbols-outlined text-[22px]">help_outline</span>
           </button>
-          <div className="hidden h-8 w-px bg-white/10 sm:block" />
+          <div className="hidden h-8 w-px bg-overlay/10 sm:block" />
           <button
             type="button"
             onClick={() => navigate('/mi-perfil')}
-            className="group flex max-w-[min(100%,18rem)] items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 text-left transition-colors hover:border-white/10 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+            className="group flex max-w-[min(100%,18rem)] items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 text-left transition-colors hover:border-overlay/10 hover:bg-overlay/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
             aria-label="Ir a mi perfil"
           >
             <div className="hidden min-w-0 flex-1 text-right sm:block">
@@ -148,7 +148,7 @@ function AppLayout() {
               </p>
             </div>
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface-container-high text-sm font-bold text-primary shadow-md shadow-black/30 transition-transform group-hover:scale-[1.03] group-hover:border-primary/50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface-container-high text-sm font-bold text-primary shadow-md shadow-elevation/30 transition-transform group-hover:scale-[1.03] group-hover:border-primary/50"
               role="presentation"
             >
               {avatarPath ? (

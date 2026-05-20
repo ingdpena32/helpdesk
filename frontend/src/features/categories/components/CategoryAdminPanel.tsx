@@ -138,7 +138,7 @@ export default function CategoryAdminPanel({ categories, loading }: Props) {
               onChange={(e) => setNewName(e.target.value)}
               maxLength={80}
               placeholder="Ej. Seguridad"
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             />
           </div>
           <button
@@ -150,7 +150,7 @@ export default function CategoryAdminPanel({ categories, loading }: Props) {
           </button>
         </form>
         {createError ? (
-          <p className="text-sm text-red-200" role="alert">
+          <p className="text-sm text-error" role="alert">
             {createError}
           </p>
         ) : null}
@@ -158,7 +158,7 @@ export default function CategoryAdminPanel({ categories, loading }: Props) {
         {loading ? (
           <p className="text-sm text-on-surface-variant">Cargando categorías…</p>
         ) : (
-          <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+          <ul className="divide-y divide-overlay/10 rounded-xl border border-overlay/10">
             {categories.map((cat) => (
               <li key={cat.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 {editingId === cat.id ? (
@@ -168,7 +168,7 @@ export default function CategoryAdminPanel({ categories, loading }: Props) {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       maxLength={80}
-                      className="min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                      className="min-w-0 flex-1 rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                     />
                     <div className="flex gap-2">
                       <button
@@ -220,7 +220,7 @@ export default function CategoryAdminPanel({ categories, loading }: Props) {
           </ul>
         )}
         {editError ? (
-          <p className="text-sm text-red-200" role="alert">
+          <p className="text-sm text-error" role="alert">
             {editError}
           </p>
         ) : null}

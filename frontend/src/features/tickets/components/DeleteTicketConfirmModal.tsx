@@ -32,7 +32,7 @@ export default function DeleteTicketConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-scrim/60 px-4 py-8 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -42,7 +42,7 @@ export default function DeleteTicketConfirmModal({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#1e293b] p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl border border-overlay/10 bg-surface-container p-6 shadow-2xl"
       >
         <h2 id={titleId} className="font-architectural text-lg font-bold text-on-surface">
           Eliminar ticket
@@ -52,7 +52,7 @@ export default function DeleteTicketConfirmModal({
           eliminación lógica: no se borrará de la base de datos, pero dejará de mostrarse en el sistema.
         </p>
         {error ? (
-          <p className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <p className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-error">
             {error}
           </p>
         ) : null}

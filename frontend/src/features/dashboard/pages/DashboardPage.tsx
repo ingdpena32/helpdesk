@@ -111,7 +111,7 @@ export default function DashboardPage() {
                   setSegmentAgentId(v === '' ? '' : Number(v))
                 }}
                 disabled={agentsQuery.isLoading}
-                className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:opacity-60"
+                className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:opacity-60"
               >
                 <option value="">Todos los agentes</option>
                 {activeAgents.map((a) => (
@@ -122,7 +122,7 @@ export default function DashboardPage() {
               </select>
             </div>
           ) : (
-            <div className="rounded-lg border border-white/10 bg-surface-container-low/50 px-3 py-2.5 text-sm text-on-surface-variant">
+            <div className="rounded-lg border border-overlay/10 bg-surface-container-low/50 px-3 py-2.5 text-sm text-on-surface-variant">
               <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant/80">Ámbito</span>
               <p className="mt-1 font-medium text-on-surface">Solo tus tickets asignados</p>
             </div>
@@ -135,7 +135,7 @@ export default function DashboardPage() {
               id={categoryId}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             >
               <option value="">Todas</option>
               {categoryOptions.map((c) => (
@@ -153,7 +153,7 @@ export default function DashboardPage() {
               id={priorityId}
               value={priority}
               onChange={(e) => setPriority(e.target.value as TicketPriority | '')}
-              className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+              className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             >
               {PRIORITY_OPTS.map((p) => (
                 <option key={p.value || 'all'} value={p.value}>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
       </div>
 
       {stats.error ? (
-        <p className="text-sm text-red-200" role="alert">
+        <p className="text-sm text-error" role="alert">
           {stats.error}
         </p>
       ) : null}
@@ -248,14 +248,14 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-xl">more_horiz</span>
             </button>
           </div>
-          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-white/15 bg-surface-container-low/40 px-6 py-16">
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-overlay/15 bg-surface-container-low/40 px-6 py-16">
             <p className="text-center text-sm text-on-surface-variant">Sin serie temporal conectada aún.</p>
           </div>
         </div>
 
         <div className="dashboard-panel flex flex-col p-8">
           <h3 className="font-architectural mb-6 text-xl font-bold text-on-surface">Por categoría</h3>
-          <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-surface-container-low/40 py-12">
+          <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-overlay/15 bg-surface-container-low/40 py-12">
             <p className="px-4 text-center text-sm text-on-surface-variant">
               Use el filtro de categoría arriba para acotar KPIs; gráfico de barras pendiente de conectar.
             </p>
@@ -274,7 +274,7 @@ export default function DashboardPage() {
               Ver tickets
             </Link>
           </div>
-          <div className="flex min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-white/15 bg-surface-container-low/40 py-12">
+          <div className="flex min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-overlay/15 bg-surface-container-low/40 py-12">
             <p className="px-4 text-center text-sm text-on-surface-variant">
               Resumen operativo unificado; feed de actividad en tiempo real pendiente.
             </p>
@@ -285,7 +285,7 @@ export default function DashboardPage() {
           <div className="mb-6 flex items-center justify-between">
             <h3 className="font-architectural text-xl font-bold text-on-surface">Vencimientos de SLA</h3>
           </div>
-          <div className="flex min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-white/15 bg-surface-container-low/40 py-12">
+          <div className="flex min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-overlay/15 bg-surface-container-low/40 py-12">
             <p className="px-4 text-center text-sm text-on-surface-variant">Sin vencimientos de SLA configurados.</p>
           </div>
         </div>

@@ -320,7 +320,7 @@ export default function TicketDetailPage() {
       </div>
 
       {ticketError ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-error">
           {(ticketError as Error).message}
         </div>
       ) : null}
@@ -376,7 +376,7 @@ export default function TicketDetailPage() {
                 <h3 className="font-architectural text-lg font-bold text-on-surface">Auditoría reciente</h3>
                 <ul className="mt-4 space-y-2 text-sm text-on-surface-variant">
                   {ticket.audit_log.slice(0, 12).map((ev) => (
-                    <li key={ev.id} className="rounded-lg border border-white/10 bg-surface-container-low/30 px-3 py-2">
+                    <li key={ev.id} className="rounded-lg border border-overlay/10 bg-surface-container-low/30 px-3 py-2">
                       <span className="font-medium text-on-surface">{auditSummary(ev)}</span>
                       <span className="ml-2 text-xs">{formatDate(ev.created_at)}</span>
                       {ev.actor_user_id != null ? (
@@ -416,11 +416,11 @@ export default function TicketDetailPage() {
                 <p className="mt-4 text-sm text-on-surface-variant">Cargando comentarios…</p>
               ) : null}
               {commentsQuery.error ? (
-                <p className="mt-4 text-sm text-red-200">{(commentsQuery.error as Error).message}</p>
+                <p className="mt-4 text-sm text-error">{(commentsQuery.error as Error).message}</p>
               ) : null}
               <ul className="mt-4 space-y-4">
                 {comments.map((c) => (
-                  <li key={c.id} className="rounded-lg border border-white/10 bg-surface-container-low/40 px-4 py-3">
+                  <li key={c.id} className="rounded-lg border border-overlay/10 bg-surface-container-low/40 px-4 py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="text-sm font-semibold text-on-surface">{c.username}</span>
                       <span className="text-xs text-on-surface-variant">{formatDate(c.created_at)}</span>
@@ -442,11 +442,11 @@ export default function TicketDetailPage() {
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                  className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                   placeholder="Añade contexto o seguimiento…"
                 />
                 {commentError ? (
-                  <p className="text-sm text-red-200" role="alert">
+                  <p className="text-sm text-error" role="alert">
                     {commentError}
                   </p>
                 ) : null}
@@ -465,7 +465,7 @@ export default function TicketDetailPage() {
             <form className="dashboard-panel space-y-4 p-6" onSubmit={onSave}>
               <h3 className="font-architectural text-lg font-bold text-on-surface">Gestión</h3>
 
-              <div className="space-y-4 rounded-xl border border-white/10 bg-surface-container-low/30 p-4">
+              <div className="space-y-4 rounded-xl border border-overlay/10 bg-surface-container-low/30 p-4">
                 {canStaff ? (
                   <>
                     <EditableSelect
@@ -523,7 +523,7 @@ export default function TicketDetailPage() {
 
                 <div>
                   <p className="mb-1.5 text-xs font-semibold text-on-surface-variant">Motivo IA</p>
-                  <p className="whitespace-pre-wrap rounded-lg border border-white/10 bg-surface-container-low/50 px-3 py-2 text-sm text-on-surface">
+                  <p className="whitespace-pre-wrap rounded-lg border border-overlay/10 bg-surface-container-low/50 px-3 py-2 text-sm text-on-surface">
                     {ticket.ai_motivo?.trim() || '—'}
                   </p>
                 </div>
@@ -561,7 +561,7 @@ export default function TicketDetailPage() {
                       if (nextId === ticket.assigned_to) return
                       transferMutation.mutate(nextId)
                     }}
-                    className="w-full rounded-lg border border-white/10 bg-surface-container-low px-3 py-2.5 text-sm text-on-surface outline-none transition-shadow focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-lg border border-overlay/10 bg-surface-container-low px-3 py-2.5 text-sm text-on-surface outline-none transition-shadow focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {ticket.assigned_to == null ? (
                       <option value="">Elige agente o administrador…</option>
@@ -582,7 +582,7 @@ export default function TicketDetailPage() {
                     <p className="mt-2 text-xs font-medium text-on-surface-variant">Transfiriendo…</p>
                   ) : null}
                   {transferError ? (
-                    <p className="mt-2 text-sm text-red-200" role="alert">
+                    <p className="mt-2 text-sm text-error" role="alert">
                       {transferError}
                     </p>
                   ) : null}
@@ -600,7 +600,7 @@ export default function TicketDetailPage() {
                   id={statusFieldId}
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TicketStatus)}
-                  className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                  className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                 >
                   {(['open', 'in_progress', 'closed'] as const).map((s) => (
                     <option key={s} value={s}>
@@ -619,7 +619,7 @@ export default function TicketDetailPage() {
                     id={assignFieldId}
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                    className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                   >
                     <option value="">Sin asignar</option>
                     {ticket.assigned_to != null &&
@@ -641,7 +641,7 @@ export default function TicketDetailPage() {
                     inputMode="numeric"
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                    className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                     placeholder="Vacío = sin asignar"
                   />
                 )}
@@ -659,13 +659,13 @@ export default function TicketDetailPage() {
                   value={resolution}
                   onChange={(e) => setResolution(e.target.value)}
                   rows={5}
-                  className="w-full resize-y rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                  className="w-full resize-y rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
                   placeholder="Describe la solución o el cierre…"
                 />
               </div>
 
               {formError ? (
-                <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+                <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-error" role="alert">
                   {formError}
                 </p>
               ) : null}
@@ -681,7 +681,7 @@ export default function TicketDetailPage() {
 
             {isAdmin ? (
               <div className="dashboard-panel mt-6 border border-red-500/20 p-6">
-                <h3 className="font-architectural text-lg font-bold text-red-200">Zona de peligro</h3>
+                <h3 className="font-architectural text-lg font-bold text-error">Zona de peligro</h3>
                 <p className="mt-2 text-sm text-on-surface-variant">
                   El ticket dejará de mostrarse en listados (eliminación lógica).
                 </p>

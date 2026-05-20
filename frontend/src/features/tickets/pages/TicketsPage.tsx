@@ -148,7 +148,7 @@ function TicketsPage() {
       </div>
 
       <div className="dashboard-range-pill flex flex-col gap-2 p-2 sm:flex-row sm:flex-wrap sm:items-stretch">
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-surface-container/50 px-3 py-2 sm:min-w-[11rem]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-overlay/10 bg-surface-container/50 px-3 py-2 sm:min-w-[11rem]">
           <label htmlFor={statusId} className="shrink-0 text-xs font-semibold text-on-surface-variant">
             Estado
           </label>
@@ -165,7 +165,7 @@ function TicketsPage() {
             ))}
           </select>
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-surface-container/50 px-3 py-2 sm:min-w-[11rem]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-overlay/10 bg-surface-container/50 px-3 py-2 sm:min-w-[11rem]">
           <label htmlFor={priorityId} className="shrink-0 text-xs font-semibold text-on-surface-variant">
             Prioridad
           </label>
@@ -187,7 +187,7 @@ function TicketsPage() {
       <div className="dashboard-panel overflow-hidden p-0">
         <table className="w-full border-separate border-spacing-0 text-left">
           <thead>
-            <tr className="border-b border-white/10 bg-surface-container-low/60 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+            <tr className="border-b border-overlay/10 bg-surface-container-low/60 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
               <th className="px-6 py-4">Ticket</th>
               <th className="px-6 py-4">Categoría</th>
               <th className="px-6 py-4">Estado</th>
@@ -222,7 +222,7 @@ function TicketsPage() {
             ) : null}
             {!isLoading && !(isFetching && searchQ)
               ? visibleTickets.map((t) => (
-              <tr key={t.id} className="border-b border-white/5 text-sm text-on-surface">
+              <tr key={t.id} className="border-b border-overlay/5 text-sm text-on-surface">
                 <td className="px-6 py-4 font-medium">
                   <Link to={`/tickets/${t.id}`} className="text-primary hover:underline">
                     {t.title}
@@ -240,7 +240,7 @@ function TicketsPage() {
                         setDeleteError(null)
                         setDeleteTarget({ id: t.id, title: t.title })
                       }}
-                      className="text-xs font-semibold text-red-300 hover:text-red-200 hover:underline"
+                      className="text-xs font-semibold text-error hover:underline"
                     >
                       Eliminar
                     </button>
