@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
+import { agentMatchesQuery } from '../../../shared/lib/searchMatch'
 import { useAuth } from '../../auth/context/AuthContext'
+import { useSearch } from '../../shell/context/SearchContext'
 import CreateAgentModal from '../components/CreateAgentModal'
 import EditAgentModal from '../components/EditAgentModal'
 import { useAgentsQuery } from '../hooks/useAgentsQuery'
@@ -12,7 +14,16 @@ export default function AgentsPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
-  const { data, isLoading, error } = useAgentsQuery()
+  const { debouncedQuery, scope } = useSearch()
+  const searchQ = scope === 'agents' ? debouncedQuery : ''
+  const agentFilters = useMemo(() => (searchQ ? { q: searchQ } : {}), [searchQ])
+  const { data, isLoading, isFetching, error } = useAgentsQuery(agentFilters)
+
+  const visibleAgents = useMemo(() => {
+    const rows = data?.results ?? []
+    if (!searchQ) return rows
+    return rows.filter((a) => agentMatchesQuery(a, searchQ))
+  }, [data?.results, searchQ])
   const [createOpen, setCreateOpen] = useState(false)
   const [editAgent, setEditAgent] = useState<Agent | null>(null)
 
@@ -80,10 +91,10 @@ export default function AgentsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isLoading || (isFetching && searchQ) ? (
                 <tr>
                   <td colSpan={isAdmin ? 8 : 7} className="px-6 py-20 text-center text-sm text-on-surface-variant">
-                    Cargando…
+                    {searchQ ? 'Buscando…' : 'Cargando…'}
                   </td>
                 </tr>
               ) : null}
@@ -94,14 +105,15 @@ export default function AgentsPage() {
                   </td>
                 </tr>
               ) : null}
-              {data && data.results.length === 0 ? (
+              {!isLoading && !(isFetching && searchQ) && visibleAgents.length === 0 ? (
                 <tr>
                   <td colSpan={isAdmin ? 8 : 7} className="px-6 py-20 text-center text-sm text-on-surface-variant">
-                    No hay agentes registrados.
+                    {searchQ ? `No hay agentes que coincidan con «${searchQ}».` : 'No hay agentes registrados.'}
                   </td>
                 </tr>
               ) : null}
-              {data?.results.map((a) => (
+              {!isLoading && !(isFetching && searchQ)
+                ? visibleAgents.map((a) => (
                 <tr key={a.id} className="border-b border-white/5 text-sm text-on-surface">
                   <td className="px-6 py-4 font-medium">
                     <div className="flex flex-col">
@@ -141,7 +153,8 @@ export default function AgentsPage() {
                     </td>
                   ) : null}
                 </tr>
-              ))}
+                  ))
+                : null}
             </tbody>
           </table>
         </div>

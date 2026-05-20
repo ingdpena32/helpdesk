@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { AuthenticatedProfilePhoto } from '../../../shared/components/AuthenticatedProfilePhoto'
@@ -8,6 +8,8 @@ import { useAuth } from '../../auth/context/AuthContext'
 import { withPhotoCacheBust } from '../../../shared/lib/photoUrl'
 import NewTicketModal from '../../tickets/components/NewTicketModal'
 import NotificationCenter from '../../notifications/components/NotificationCenter'
+import { SearchProvider, useSearch } from '../context/SearchContext'
+import { searchPlaceholder } from '../hooks/useSearchScope'
 
 type NavItem = { to: string; icon: string; label: string; roles: UserRole[] }
 
@@ -17,6 +19,43 @@ const allNavItems: NavItem[] = [
   { to: '/agentes', icon: 'group', label: 'Agentes', roles: ['admin', 'agent'] },
   { to: '/settings', icon: 'settings', label: 'Ajustes', roles: ['admin', 'agent'] },
 ]
+
+function HeaderSearch() {
+  const { scope, query, setQuery, clearQuery } = useSearch()
+  const searchFieldId = useId()
+
+  return (
+    <div
+      className={`flex max-w-xl flex-1 items-center gap-3 rounded-full border px-4 py-2 shadow-inner shadow-black/20 transition-colors ${
+        scope
+          ? 'border-white/10 bg-surface-container/40 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20'
+          : 'border-white/5 bg-surface-container/20 opacity-60'
+      }`}
+    >
+      <span className="material-symbols-outlined text-on-surface-variant">search</span>
+      <label htmlFor={searchFieldId} className="sr-only">
+        {searchPlaceholder(scope)}
+      </label>
+      <input
+        id={searchFieldId}
+        type="search"
+        value={query}
+        disabled={!scope}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') clearQuery()
+        }}
+        placeholder={searchPlaceholder(scope)}
+        className="min-w-0 flex-1 border-0 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-0 disabled:cursor-not-allowed"
+      />
+      {query && scope ? (
+        <button type="button" onClick={clearQuery} className="btn-icon shrink-0 p-1" aria-label="Limpiar búsqueda">
+          <span className="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      ) : null}
+    </div>
+  )
+}
 
 function AppLayout() {
   const { user, logout } = useAuth()
@@ -39,6 +78,7 @@ function AppLayout() {
   const avatarPath = withPhotoCacheBust(user?.profile_photo_url, user?.avatar_cache_bust)
 
   return (
+    <SearchProvider>
     <div className="min-h-screen bg-surface text-on-surface">
       <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} />
 
@@ -85,14 +125,7 @@ function AppLayout() {
       </aside>
 
       <header className="fixed left-64 right-0 top-0 z-40 flex h-16 items-center justify-between gap-6 overflow-visible border-b border-white/5 bg-surface/90 px-8 py-3 backdrop-blur-xl">
-        <div className="flex max-w-xl flex-1 items-center gap-3 rounded-full border border-white/10 bg-surface-container/40 px-4 py-2 shadow-inner shadow-black/20 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20">
-          <span className="material-symbols-outlined text-on-surface-variant">search</span>
-          <input
-            type="search"
-            placeholder="Buscar tickets, sistemas o usuarios…"
-            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-0"
-          />
-        </div>
+        <HeaderSearch />
 
         <div className="flex shrink-0 items-center gap-5 text-on-surface-variant">
           <NotificationCenter />
@@ -138,6 +171,7 @@ function AppLayout() {
         <Outlet />
       </main>
     </div>
+    </SearchProvider>
   )
 }
 

@@ -3,8 +3,15 @@ import type { Paginated } from '../../../shared/api/types'
 import type { Ticket } from '../../tickets/types/ticket.types'
 import type { Agent, Department } from '../types/agent.types'
 
-export function listAgents(): Promise<Paginated<Agent>> {
-  return apiGet<Paginated<Agent>>('/api/agents')
+export type AgentListFilters = {
+  q?: string
+}
+
+export function listAgents(filters: AgentListFilters = {}): Promise<Paginated<Agent>> {
+  const params = new URLSearchParams()
+  if (filters.q?.trim()) params.set('q', filters.q.trim())
+  const qs = params.toString()
+  return apiGet<Paginated<Agent>>(`/api/agents${qs ? `?${qs}` : ''}`)
 }
 
 export type CreateAgentPayload = {

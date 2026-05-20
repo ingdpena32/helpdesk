@@ -91,7 +91,7 @@ export default function TicketDetailPage() {
 
   const agentsQuery = useQuery({
     queryKey: ['agents'],
-    queryFn: listAgents,
+    queryFn: () => listAgents(),
     enabled: !!user,
   })
 

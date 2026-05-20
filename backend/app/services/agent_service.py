@@ -72,7 +72,9 @@ def _agent_to_json(
     }
 
 
-def list_agents(headers: Mapping[str, str]) -> tuple[int, dict]:
+def list_agents(headers: Mapping[str, str], query: dict[str, str] | None = None) -> tuple[int, dict]:
+    q = query or {}
+    search = (q.get("q") or q.get("search") or "").strip() or None
     try:
         with get_connection() as conn:
             user, err_status, err_body = auth_service.require_user(conn, headers)
@@ -82,7 +84,9 @@ def list_agents(headers: Mapping[str, str]) -> tuple[int, dict]:
                 return 403, {"error": "No autorizado para listar agentes"}
 
             include_inactive = permissions.is_admin(user.role)
-            rows = user_repository.list_agents_with_workload(conn, include_inactive=include_inactive)
+            rows = user_repository.list_agents_with_workload(
+                conn, include_inactive=include_inactive, search=search
+            )
     except Exception:
         logger.exception("list_agents: error no esperado")
         return 500, {"error": "No se pudo listar agentes."}

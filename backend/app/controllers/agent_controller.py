@@ -7,8 +7,8 @@ from typing import Any, Mapping
 from app.services import agent_service
 
 
-def get_list(_body: dict[str, Any] | None, _query: dict[str, str], headers: Mapping[str, str]) -> tuple[int, dict]:
-    return agent_service.list_agents(headers)
+def get_list(_body: dict[str, Any] | None, query: dict[str, str], headers: Mapping[str, str]) -> tuple[int, dict]:
+    return agent_service.list_agents(headers, query)
 
 
 def post_create(body: dict[str, Any] | None, _query: dict[str, str], headers: Mapping[str, str]) -> tuple[int, dict]:

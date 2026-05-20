@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
+import { ticketMatchesQuery } from '../../../shared/lib/searchMatch'
 import { useAuth } from '../../auth/context/AuthContext'
+import { useSearch } from '../../shell/context/SearchContext'
 import DeleteTicketConfirmModal from '../components/DeleteTicketConfirmModal'
 import { useTicketsQuery } from '../hooks/useTicketsQuery'
 import { deleteTicket } from '../services/ticketsApi'
@@ -79,11 +81,25 @@ function TicketsPage() {
   const [priority, setPriority] = useState<TicketPriority | ''>('')
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const { debouncedQuery, scope } = useSearch()
+  const searchQ = scope === 'tickets' ? debouncedQuery : ''
 
-  const { data, isLoading, error } = useTicketsQuery({
-    ...(status ? { status } : {}),
-    ...(priority ? { priority } : {}),
-  })
+  const ticketFilters = useMemo(
+    () => ({
+      ...(status ? { status } : {}),
+      ...(priority ? { priority } : {}),
+      ...(searchQ ? { q: searchQ } : {}),
+    }),
+    [status, priority, searchQ],
+  )
+
+  const { data, isLoading, isFetching, error } = useTicketsQuery(ticketFilters)
+
+  const visibleTickets = useMemo(() => {
+    const rows = data?.results ?? []
+    if (!searchQ) return rows
+    return rows.filter((t) => ticketMatchesQuery(t, searchQ))
+  }, [data?.results, searchQ])
 
   const isAdmin = user?.role === 'admin'
   const colSpan = isAdmin ? 6 : 5
@@ -181,10 +197,10 @@ function TicketsPage() {
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
+            {isLoading || (isFetching && searchQ) ? (
               <tr>
                 <td colSpan={colSpan} className="px-6 py-20 text-center text-sm text-on-surface-variant">
-                  Cargando…
+                  {searchQ ? 'Buscando…' : 'Cargando…'}
                 </td>
               </tr>
             ) : null}
@@ -195,14 +211,17 @@ function TicketsPage() {
                 </td>
               </tr>
             ) : null}
-            {data && data.results.length === 0 ? (
+            {!isLoading && !(isFetching && searchQ) && visibleTickets.length === 0 ? (
               <tr>
                 <td colSpan={colSpan} className="px-6 py-20 text-center text-sm text-on-surface-variant">
-                  No hay tickets con los filtros actuales.
+                  {searchQ
+                    ? `No hay tickets que coincidan con «${searchQ}».`
+                    : 'No hay tickets con los filtros actuales.'}
                 </td>
               </tr>
             ) : null}
-            {data?.results.map((t) => (
+            {!isLoading && !(isFetching && searchQ)
+              ? visibleTickets.map((t) => (
               <tr key={t.id} className="border-b border-white/5 text-sm text-on-surface">
                 <td className="px-6 py-4 font-medium">
                   <Link to={`/tickets/${t.id}`} className="text-primary hover:underline">
@@ -228,7 +247,8 @@ function TicketsPage() {
                   </td>
                 ) : null}
               </tr>
-            ))}
+                ))
+              : null}
           </tbody>
         </table>
       </div>

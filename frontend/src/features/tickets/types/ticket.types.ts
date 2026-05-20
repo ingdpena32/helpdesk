@@ -72,6 +72,8 @@ export type TicketFilters = {
   assigned_to?: number
   /** Filtro por categoría exacta (texto) */
   category?: string
+  /** Búsqueda libre (título, descripción, categoría, correo, ID…) */
+  q?: string
   page?: number
   page_size?: number
 }

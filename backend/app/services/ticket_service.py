@@ -147,6 +147,7 @@ def list_tickets(headers: Mapping[str, str], query: dict[str, str]) -> tuple[int
     if priority_raw and priority is None:
         priority = priority_raw.strip() or None
     category = query.get("category") or None
+    search = (query.get("q") or query.get("search") or "").strip() or None
     assigned_raw = query.get("assigned_to")
     assigned_to: int | None = None
     if assigned_raw not in (None, ""):
@@ -167,6 +168,7 @@ def list_tickets(headers: Mapping[str, str], query: dict[str, str]) -> tuple[int
                 priority=priority,
                 assigned_to=assigned_to,
                 category=category,
+                search=search,
             )
             rows = ticket_repository.list_filtered(
                 conn,
@@ -174,6 +176,7 @@ def list_tickets(headers: Mapping[str, str], query: dict[str, str]) -> tuple[int
                 priority=priority,
                 assigned_to=assigned_to,
                 category=category,
+                search=search,
                 limit=page_size,
                 offset=offset,
             )

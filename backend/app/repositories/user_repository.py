@@ -139,12 +139,30 @@ def list_agents_with_workload(
     conn: PGConnection,
     *,
     include_inactive: bool = False,
+    search: str | None = None,
 ) -> list[tuple[User, int, str | None]]:
     """
     Personal operativo (rol agente o administrador) y carga de tickets abiertos/en progreso.
     Los administradores se listan como agentes operativos con permisos extra en la aplicación.
     """
     active_filter = "" if include_inactive else "AND COALESCE(u.is_active, TRUE) = TRUE"
+    search_filter = ""
+    params: list[Any] = []
+    term = (search or "").strip()
+    if term:
+        like = f"%{term}%"
+        search_filter = """
+        AND (
+            u.email ILIKE %s
+            OR COALESCE(u.full_name, '') ILIKE %s
+            OR COALESCE(u.corporate_email, '') ILIKE %s
+            OR COALESCE(u.phone, '') ILIKE %s
+            OR COALESCE(u.document_number, '') ILIKE %s
+            OR COALESCE(u.professional_role, '') ILIKE %s
+            OR COALESCE(d.name, '') ILIKE %s
+        )
+        """
+        params = [like, like, like, like, like, like, like]
     sql = f"""
         SELECT u.id, u.email, u.password_hash, u.role,
                u.full_name, u.corporate_email, u.phone, u.document_number, u.gender,
@@ -164,10 +182,11 @@ def list_agents_with_workload(
         LEFT JOIN departments d ON d.id = u.department_id
         WHERE LOWER(TRIM(u.role)) IN ('agent', 'admin')
         {active_filter}
+        {search_filter}
         ORDER BY u.email
     """
     with conn.cursor() as cur:
-        cur.execute(sql)
+        cur.execute(sql, tuple(params))
         rows = cur.fetchall()
     out: list[tuple[User, int, str | None]] = []
     for row in rows:

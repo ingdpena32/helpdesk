@@ -55,7 +55,7 @@ export default function DashboardPage() {
 
   const agentsQuery = useQuery({
     queryKey: ['agents'],
-    queryFn: listAgents,
+    queryFn: () => listAgents(),
     enabled: !!user && isAdmin,
   })
 

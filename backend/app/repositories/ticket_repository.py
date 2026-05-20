@@ -96,14 +96,14 @@ def insert(
     return _row_to_ticket(row)
 
 
-def count_filtered(
-    conn: PGConnection,
+def _ticket_list_conditions(
     *,
     status: str | None = None,
     priority: str | None = None,
     assigned_to: int | None = None,
     category: str | None = None,
-) -> int:
+    search: str | None = None,
+) -> tuple[list[str], list[Any]]:
     conditions: list[str] = ["deleted_at IS NULL"]
     params: list[Any] = []
     if status:
@@ -118,6 +118,40 @@ def count_filtered(
     if category:
         conditions.append("category = %s")
         params.append(category)
+    term = (search or "").strip()
+    if term:
+        like = f"%{term}%"
+        id_part = ""
+        search_params: list[Any] = [like, like, like, like, like, like]
+        if term.isdigit():
+            id_part = " OR id = %s"
+            search_params.append(int(term))
+        conditions.append(
+            "(title ILIKE %s OR description ILIKE %s OR category ILIKE %s "
+            "OR COALESCE(sender_email, '') ILIKE %s OR COALESCE(sender_name, '') ILIKE %s "
+            "OR COALESCE(ai_motivo, '') ILIKE %s"
+            f"{id_part})"
+        )
+        params.extend(search_params)
+    return conditions, params
+
+
+def count_filtered(
+    conn: PGConnection,
+    *,
+    status: str | None = None,
+    priority: str | None = None,
+    assigned_to: int | None = None,
+    category: str | None = None,
+    search: str | None = None,
+) -> int:
+    conditions, params = _ticket_list_conditions(
+        status=status,
+        priority=priority,
+        assigned_to=assigned_to,
+        category=category,
+        search=search,
+    )
     where = " WHERE " + " AND ".join(conditions)
     with conn.cursor() as cur:
         cur.execute(f"SELECT COUNT(*) FROM tickets{where}", tuple(params))
@@ -132,23 +166,17 @@ def list_filtered(
     priority: str | None = None,
     assigned_to: int | None = None,
     category: str | None = None,
+    search: str | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> list[Ticket]:
-    conditions: list[str] = ["deleted_at IS NULL"]
-    params: list[Any] = []
-    if status:
-        conditions.append("status = %s")
-        params.append(status)
-    if priority:
-        conditions.append("priority = %s")
-        params.append(priority)
-    if assigned_to is not None:
-        conditions.append("assigned_to = %s")
-        params.append(assigned_to)
-    if category:
-        conditions.append("category = %s")
-        params.append(category)
+    conditions, params = _ticket_list_conditions(
+        status=status,
+        priority=priority,
+        assigned_to=assigned_to,
+        category=category,
+        search=search,
+    )
     where = " WHERE " + " AND ".join(conditions)
     params.extend([limit, offset])
     sql = f"""
