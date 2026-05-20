@@ -6,7 +6,11 @@ import { listAgents } from '../../agents/services/agentsApi'
 import { useAuth } from '../../auth/context/AuthContext'
 import { useCategoriesQuery } from '../../categories/hooks/useCategoriesQuery'
 import type { TicketPriority } from '../../tickets/types/ticket.types'
+import AgentStatusStackedChart from '../components/AgentStatusStackedChart'
+import DashboardDateRangeFilter from '../components/DashboardDateRangeFilter'
+import { useAgentStatusChart } from '../hooks/useAgentStatusChart'
 import { useDashboardStats } from '../hooks/useDashboardStats'
+import { defaultDashboardDateRange, isDateRangeInvalid } from '../utils/dateRange'
 
 const PRIORITY_OPTS: { value: TicketPriority | ''; label: string }[] = [
   { value: '', label: 'Todas' },
@@ -36,9 +40,14 @@ export default function DashboardPage() {
   const categoryId = useId()
   const priorityId = useId()
 
+  const defaultRange = useMemo(() => defaultDashboardDateRange(), [])
+  const [dateFrom, setDateFrom] = useState(defaultRange.from)
+  const [dateTo, setDateTo] = useState(defaultRange.to)
   const [segmentAgentId, setSegmentAgentId] = useState<number | ''>('')
   const [category, setCategory] = useState('')
   const [priority, setPriority] = useState<TicketPriority | ''>('')
+
+  const dateRangeInvalid = isDateRangeInvalid(dateFrom, dateTo)
 
   const assignedToFilter = useMemo(() => {
     if (!isAdmin) return user?.id
@@ -46,12 +55,20 @@ export default function DashboardPage() {
     return typeof segmentAgentId === 'number' ? segmentAgentId : Number(segmentAgentId)
   }, [isAdmin, user?.id, segmentAgentId])
 
-  const stats = useDashboardStats({
-    assignedTo: assignedToFilter,
-    category: category.trim() || undefined,
-    priority: priority || undefined,
-    enabled: !!user,
-  })
+  const dashboardFilters = useMemo(
+    () => ({
+      assignedTo: assignedToFilter,
+      category: category.trim() || undefined,
+      priority: priority || undefined,
+      createdFrom: dateRangeInvalid ? undefined : dateFrom,
+      createdTo: dateRangeInvalid ? undefined : dateTo,
+      enabled: !!user && !dateRangeInvalid,
+    }),
+    [assignedToFilter, category, priority, dateFrom, dateTo, dateRangeInvalid, user],
+  )
+
+  const stats = useDashboardStats(dashboardFilters)
+  const chart = useAgentStatusChart(dashboardFilters)
 
   const agentsQuery = useQuery({
     queryKey: ['agents'],
@@ -74,9 +91,13 @@ export default function DashboardPage() {
     : 'Vista personal: solo tus tickets asignados.'
 
   const avgHint =
-    stats.sampleSize > 0 && stats.closedPopulation != null
-      ? `Media calculada sobre los últimos ${stats.sampleSize} tickets cerrados mostrados (${stats.closedPopulation} cerrados en total en este filtro).`
-      : 'Media de resolución sobre la muestra de tickets cerrados disponible.'
+    stats.closedPopulation != null && stats.closedPopulation > 0
+      ? `Media calculada sobre ${stats.closedPopulation} ticket${stats.closedPopulation === 1 ? '' : 's'} cerrado${stats.closedPopulation === 1 ? '' : 's'} en el rango seleccionado.`
+      : 'Sin tickets cerrados en el rango para calcular la media.'
+
+  const rangeLabel = dateRangeInvalid
+    ? 'Rango de fechas inválido'
+    : `${dateFrom} — ${dateTo}`
 
   return (
     <div className="relative z-0 space-y-10">
@@ -85,7 +106,8 @@ export default function DashboardPage() {
           <h2 className="font-architectural text-4xl font-extrabold tracking-tight text-on-surface">Dashboard</h2>
           <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-on-surface-variant">{scopeDescription}</p>
           <p className="mt-2 text-xs text-on-surface-variant">
-            Los KPI se recalculan al cambiar filtros (misma API de tickets).{' '}
+            Período: <span className="font-medium text-on-surface">{rangeLabel}</span>. Los KPI y gráficos se actualizan al
+            cambiar filtros.{' '}
             <Link to="/tickets" className="font-semibold text-primary hover:underline">
               Ir al listado de tickets
             </Link>
@@ -98,6 +120,12 @@ export default function DashboardPage() {
           Filtros del panel
         </h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DashboardDateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onFromChange={setDateFrom}
+            onToChange={setDateTo}
+          />
           {isAdmin ? (
             <div>
               <label htmlFor={segmentId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
@@ -170,9 +198,8 @@ export default function DashboardPage() {
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-slate-300 to-primary" />
           <div className="mb-4 flex items-start justify-between">
             <span className="material-symbols-outlined text-2xl text-on-surface-variant">dataset</span>
-            <span className="text-xs font-bold text-on-surface-variant">API</span>
           </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Total (ámbito)</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Total de tickets</p>
           <h3 className="font-architectural mt-1.5 text-3xl font-bold tracking-tight text-on-surface">
             {countLabel(stats.loading, stats.error, stats.totalCount)}
           </h3>
@@ -182,23 +209,10 @@ export default function DashboardPage() {
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-300 via-primary to-teal-400" />
           <div className="mb-4 flex items-start justify-between">
             <span className="material-symbols-outlined text-2xl text-primary">inbox</span>
-            <span className="text-xs font-bold text-on-surface-variant">API</span>
           </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Abiertos</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Tickets abiertos</p>
           <h3 className="font-architectural mt-1.5 text-3xl font-bold tracking-tight text-on-surface">
             {countLabel(stats.loading, stats.error, stats.openCount)}
-          </h3>
-        </div>
-
-        <div className="dashboard-kpi">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-400 via-primary to-sky-400" />
-          <div className="mb-4 flex items-start justify-between">
-            <span className="material-symbols-outlined text-2xl text-sky-300">pending_actions</span>
-            <span className="text-xs font-bold text-on-surface-variant">API</span>
-          </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">En progreso</p>
-          <h3 className="font-architectural mt-1.5 text-3xl font-bold tracking-tight text-on-surface">
-            {countLabel(stats.loading, stats.error, stats.inProgressCount)}
           </h3>
         </div>
 
@@ -206,9 +220,8 @@ export default function DashboardPage() {
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-500 via-sky-500 to-primary" />
           <div className="mb-4 flex items-start justify-between">
             <span className="material-symbols-outlined text-2xl text-sky-300">task_alt</span>
-            <span className="text-xs font-bold text-on-surface-variant">API</span>
           </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Resueltos (cerrados)</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Tickets cerrados</p>
           <h3 className="font-architectural mt-1.5 text-3xl font-bold tracking-tight text-on-surface">
             {countLabel(stats.loading, stats.error, stats.closedCount)}
           </h3>
@@ -218,15 +231,27 @@ export default function DashboardPage() {
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-700 via-primary to-primary-fixed" />
           <div className="mb-4 flex items-start justify-between">
             <span className="material-symbols-outlined text-2xl text-primary">schedule</span>
-            <span className="text-xs font-bold text-on-surface-variant">API</span>
           </div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-            Tiempo medio hasta cierre
+            Tiempo promedio de cierre
           </p>
           <h3 className="font-architectural mt-1.5 text-3xl font-bold tracking-tight text-on-surface">
             {stats.loading ? '…' : stats.error ? '—' : formatAvgHours(stats.avgResolutionHours)}
           </h3>
           <p className="mt-2 text-[10px] leading-snug text-on-surface-variant">{avgHint}</p>
+        </div>
+
+        <div className="dashboard-kpi">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-primary" />
+          <div className="mb-4 flex items-start justify-between">
+            <span className="material-symbols-outlined text-2xl text-amber-400">priority_high</span>
+          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+            Tickets con prioridad alta
+          </p>
+          <h3 className="font-architectural mt-1.5 text-3xl font-bold tracking-tight text-on-surface">
+            {countLabel(stats.loading, stats.error, stats.highPriorityCount)}
+          </h3>
         </div>
       </div>
 
@@ -239,25 +264,23 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="dashboard-panel relative flex min-h-[16rem] flex-col p-8 lg:col-span-2">
           <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-architectural text-xl font-bold text-on-surface">Evolución del volumen de tickets</h3>
-            <button
-              type="button"
-              className="btn-icon p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              aria-label="Más opciones"
-            >
-              <span className="material-symbols-outlined text-xl">more_horiz</span>
-            </button>
+            <h3 className="font-architectural text-xl font-bold text-on-surface">Tickets por agente y estado</h3>
           </div>
-          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-overlay/15 bg-surface-container-low/40 px-6 py-16">
-            <p className="text-center text-sm text-on-surface-variant">Sin serie temporal conectada aún.</p>
-          </div>
+          <AgentStatusStackedChart
+            agents={chart.agents}
+            statuses={chart.statuses}
+            statusLabels={chart.statusLabels}
+            maxTotal={chart.maxTotal}
+            loading={chart.loading}
+            error={chart.error}
+          />
         </div>
 
         <div className="dashboard-panel flex flex-col p-8">
-          <h3 className="font-architectural mb-6 text-xl font-bold text-on-surface">Por categoría</h3>
+          <h3 className="font-architectural mb-6 text-xl font-bold text-on-surface">Evolución del volumen</h3>
           <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-overlay/15 bg-surface-container-low/40 py-12">
             <p className="px-4 text-center text-sm text-on-surface-variant">
-              Use el filtro de categoría arriba para acotar KPIs; gráfico de barras pendiente de conectar.
+              Serie temporal pendiente; los KPI y el gráfico por agente ya respetan el rango de fechas.
             </p>
           </div>
         </div>

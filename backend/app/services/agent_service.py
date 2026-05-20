@@ -167,6 +167,15 @@ def create_agent(headers: Mapping[str, str], body: dict[str, Any] | None) -> tup
             phone = _normalize_optional_str(body.get("phone"), max_len=40)
             doc = _normalize_optional_str(body.get("document_number"), max_len=40)
             prof_role = _normalize_optional_str(body.get("professional_role"), max_len=120)
+            system_role = "agent"
+            if "role" in body and body.get("role") is not None:
+                raw_role = body.get("role")
+                if not isinstance(raw_role, str):
+                    return 400, {"error": "role debe ser agent o admin"}
+                nr = raw_role.strip().lower()
+                if nr not in _ALLOWED_SYSTEM_ROLES:
+                    return 400, {"error": "role debe ser agent o admin"}
+                system_role = nr
             gender = _normalize_optional_str(body.get("gender"), max_len=20)
             if gender is not None and gender not in _ALLOWED_GENDER:
                 return 400, {"error": "gender debe ser male, female, other o unspecified"}
@@ -187,7 +196,7 @@ def create_agent(headers: Mapping[str, str], body: dict[str, Any] | None) -> tup
                     conn,
                     email=email,
                     password_hash=pw_hash,
-                    role="agent",
+                    role=system_role,
                     corporate_email=corporate_email,
                     full_name=full_name,
                     phone=phone,

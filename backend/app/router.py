@@ -14,6 +14,7 @@ from app.controllers import (
     attachment_controller,
     auth_controller,
     category_controller,
+    dashboard_controller,
     notification_controller,
     ollama_test_controller,
     profile_controller,
@@ -80,6 +81,12 @@ def dispatch(
 
     if m == "GET" and np == "/api/admin/tickets-export":
         return admin_controller.get_tickets_export(json_body, q, h)
+
+    if m == "GET" and np == "/api/dashboard/stats":
+        return dashboard_controller.get_stats(json_body, q, h)
+
+    if m == "GET" and np == "/api/dashboard/agent-breakdown":
+        return dashboard_controller.get_agent_breakdown(json_body, q, h)
 
     if m == "GET" and np == "/api/categories":
         return category_controller.get_list(json_body, q, h)

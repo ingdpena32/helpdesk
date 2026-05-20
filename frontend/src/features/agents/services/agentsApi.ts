@@ -23,7 +23,8 @@ export type CreateAgentPayload = {
   document_number?: string
   gender?: string
   department_id?: number | null
-  professional_role?: string
+  /** Rol de permisos: admin | agent */
+  role?: 'admin' | 'agent'
 }
 
 export function createAgent(payload: CreateAgentPayload): Promise<Agent> {

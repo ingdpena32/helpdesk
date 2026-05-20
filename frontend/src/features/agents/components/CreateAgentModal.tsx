@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react'
 import { ApiError } from '../../../shared/api/client'
 import { useDepartmentsQuery } from '../hooks/useDepartmentsQuery'
 import { createAgent } from '../services/agentsApi'
+import type { UserRole } from '../../auth/types/auth.types'
 
 type Props = {
   open: boolean
@@ -45,7 +46,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
   const [phone, setPhone] = useState('')
   const [documentNumber, setDocumentNumber] = useState('')
   const [gender, setGender] = useState('')
-  const [professionalRole, setProfessionalRole] = useState('')
+  const [systemRole, setSystemRole] = useState<UserRole>('agent')
   const [formError, setFormError] = useState<string | null>(null)
 
   const mutation = useMutation({
@@ -60,7 +61,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
       setPhone('')
       setDocumentNumber('')
       setGender('')
-      setProfessionalRole('')
+      setSystemRole('agent')
       setFormError(null)
       onClose()
     },
@@ -100,7 +101,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
       phone: phone.trim() || undefined,
       document_number: documentNumber.trim() || undefined,
       gender: gender || undefined,
-      professional_role: professionalRole.trim() || undefined,
+      role: systemRole,
       department_id: departmentId === '' ? undefined : Number(departmentId),
     })
   }
@@ -122,7 +123,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
           <div>
             <h2 className="font-architectural text-xl font-bold text-on-surface">Crear agente</h2>
             <p className="mt-1 text-sm text-on-surface-variant">
-              Usuario con rol agente. Email corporativo por defecto coincide con el de acceso si lo deja vacío.
+              Elige el rol de permisos del usuario. El email corporativo coincide con el de acceso si lo deja vacío.
             </p>
           </div>
           <button
@@ -234,12 +235,16 @@ export default function CreateAgentModal({ open, onClose }: Props) {
             <label htmlFor={profId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
               Rol profesional / cargo
             </label>
-            <input
+            <select
               id={profId}
-              value={professionalRole}
-              onChange={(e) => setProfessionalRole(e.target.value)}
+              value={systemRole}
+              onChange={(e) => setSystemRole(e.target.value as UserRole)}
               className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
-            />
+              required
+            >
+              <option value="agent">Agente</option>
+              <option value="admin">Administrador</option>
+            </select>
           </div>
           <div>
             <label htmlFor={passwordId} className="mb-1.5 block text-xs font-semibold text-on-surface-variant">

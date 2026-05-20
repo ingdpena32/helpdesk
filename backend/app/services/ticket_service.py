@@ -17,6 +17,7 @@ from app.repositories import (
     user_repository,
 )
 from app.services import auth_service, category_service, notification_service
+from app.utils.date_params import parse_date_param
 
 ALLOWED_PRIORITIES: frozenset[str] = frozenset({"low", "medium", "high", "critical"})
 ALLOWED_STATUS: frozenset[str] = frozenset({"open", "in_progress", "closed"})
@@ -156,6 +157,11 @@ def list_tickets(headers: Mapping[str, str], query: dict[str, str]) -> tuple[int
         except ValueError:
             assigned_to = None
 
+    created_from = parse_date_param(query.get("created_from") or query.get("date_from"))
+    created_to = parse_date_param(query.get("created_to") or query.get("date_to"), end_of_day=True)
+    if created_from and created_to and created_from > created_to:
+        return 400, {"error": "created_from no puede ser posterior a created_to"}
+
     try:
         with get_connection() as conn:
             user, err_status, err_body = auth_service.require_user(conn, headers)
@@ -169,6 +175,8 @@ def list_tickets(headers: Mapping[str, str], query: dict[str, str]) -> tuple[int
                 assigned_to=assigned_to,
                 category=category,
                 search=search,
+                created_from=created_from,
+                created_to=created_to,
             )
             rows = ticket_repository.list_filtered(
                 conn,
@@ -177,6 +185,8 @@ def list_tickets(headers: Mapping[str, str], query: dict[str, str]) -> tuple[int
                 assigned_to=assigned_to,
                 category=category,
                 search=search,
+                created_from=created_from,
+                created_to=created_to,
                 limit=page_size,
                 offset=offset,
             )

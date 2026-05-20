@@ -74,6 +74,10 @@ export type TicketFilters = {
   category?: string
   /** Búsqueda libre (título, descripción, categoría, correo, ID…) */
   q?: string
+  /** Inicio del rango (YYYY-MM-DD), filtra por created_at >= */
+  created_from?: string
+  /** Fin del rango (YYYY-MM-DD), filtra por created_at <= fin de día */
+  created_to?: string
   page?: number
   page_size?: number
 }

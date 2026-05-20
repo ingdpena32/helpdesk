@@ -103,6 +103,8 @@ def _ticket_list_conditions(
     assigned_to: int | None = None,
     category: str | None = None,
     search: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
 ) -> tuple[list[str], list[Any]]:
     conditions: list[str] = ["deleted_at IS NULL"]
     params: list[Any] = []
@@ -118,6 +120,12 @@ def _ticket_list_conditions(
     if category:
         conditions.append("category = %s")
         params.append(category)
+    if created_from is not None:
+        conditions.append("created_at >= %s")
+        params.append(created_from)
+    if created_to is not None:
+        conditions.append("created_at <= %s")
+        params.append(created_to)
     term = (search or "").strip()
     if term:
         like = f"%{term}%"
@@ -144,6 +152,8 @@ def count_filtered(
     assigned_to: int | None = None,
     category: str | None = None,
     search: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
 ) -> int:
     conditions, params = _ticket_list_conditions(
         status=status,
@@ -151,6 +161,8 @@ def count_filtered(
         assigned_to=assigned_to,
         category=category,
         search=search,
+        created_from=created_from,
+        created_to=created_to,
     )
     where = " WHERE " + " AND ".join(conditions)
     with conn.cursor() as cur:
@@ -167,6 +179,8 @@ def list_filtered(
     assigned_to: int | None = None,
     category: str | None = None,
     search: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> list[Ticket]:
@@ -176,6 +190,8 @@ def list_filtered(
         assigned_to=assigned_to,
         category=category,
         search=search,
+        created_from=created_from,
+        created_to=created_to,
     )
     where = " WHERE " + " AND ".join(conditions)
     params.extend([limit, offset])
@@ -431,3 +447,101 @@ def insert_from_inbound(
     if row is None:
         raise RuntimeError("INSERT inbound no devolvió fila")
     return _row_to_ticket(row)
+
+
+def dashboard_stats(
+    conn: PGConnection,
+    *,
+    priority: str | None = None,
+    assigned_to: int | None = None,
+    category: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
+) -> dict[str, float | int]:
+    """Conteos por estado, prioridad alta y tiempo medio de cierre (SQL)."""
+    conditions, params = _ticket_list_conditions(
+        priority=priority,
+        assigned_to=assigned_to,
+        category=category,
+        created_from=created_from,
+        created_to=created_to,
+    )
+    where = " WHERE " + " AND ".join(conditions)
+    sql = f"""
+        SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'open')::int AS open_count,
+            COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
+            COUNT(*) FILTER (WHERE status = 'closed')::int AS closed_count,
+            COUNT(*) FILTER (WHERE priority = 'high')::int AS high_priority_count,
+            AVG(
+                EXTRACT(EPOCH FROM (closed_at - created_at)) / 3600.0
+            ) FILTER (
+                WHERE status = 'closed'
+                  AND closed_at IS NOT NULL
+                  AND closed_at > created_at
+            ) AS avg_resolution_hours
+        FROM tickets
+        {where}
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, tuple(params))
+        row = cur.fetchone()
+    if row is None:
+        return {
+            "total": 0,
+            "open": 0,
+            "in_progress": 0,
+            "closed": 0,
+            "high_priority": 0,
+            "avg_resolution_hours": None,
+        }
+    total, open_c, in_prog, closed_c, high_p, avg_h = row
+    return {
+        "total": int(total),
+        "open": int(open_c),
+        "in_progress": int(in_prog),
+        "closed": int(closed_c),
+        "high_priority": int(high_p),
+        "avg_resolution_hours": float(avg_h) if avg_h is not None else None,
+    }
+
+
+def tickets_by_agent_and_status(
+    conn: PGConnection,
+    *,
+    priority: str | None = None,
+    assigned_to: int | None = None,
+    category: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
+) -> list[tuple[int | None, str, str, int]]:
+    """Filas (agent_id, agent_label, status, count) para gráfico apilado."""
+    conditions, params = _ticket_list_conditions(
+        priority=priority,
+        assigned_to=assigned_to,
+        category=category,
+        created_from=created_from,
+        created_to=created_to,
+    )
+    where = " WHERE " + " AND ".join(conditions)
+    sql = f"""
+        SELECT
+            t.assigned_to,
+            COALESCE(
+                NULLIF(TRIM(u.full_name), ''),
+                NULLIF(TRIM(u.email), ''),
+                'Sin asignar'
+            ) AS agent_label,
+            t.status,
+            COUNT(*)::int AS cnt
+        FROM tickets t
+        LEFT JOIN users u ON u.id = t.assigned_to
+        {where}
+        GROUP BY t.assigned_to, agent_label, t.status
+        ORDER BY agent_label, t.status
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, tuple(params))
+        rows = cur.fetchall()
+    return [(r[0], str(r[1]), str(r[2]), int(r[3])) for r in rows]
