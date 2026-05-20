@@ -61,7 +61,7 @@ export default function DeleteTicketConfirmModal({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-white/5 disabled:opacity-50"
+            className="btn-secondary px-4 py-2.5 text-sm"
           >
             Cancelar
           </button>
@@ -69,7 +69,7 @@ export default function DeleteTicketConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-60"
+            className="btn-danger px-4 py-2.5 text-sm"
           >
             {loading ? 'Eliminando…' : 'Sí, eliminar'}
           </button>

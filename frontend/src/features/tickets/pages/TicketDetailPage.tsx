@@ -3,24 +3,26 @@ import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, apiGetBlob } from '../../../shared/api/client'
+import { EditableSelect } from '../../../shared/components/EditableSelect'
 import { useAuth } from '../../auth/context/AuthContext'
 import { listAgents, transferTicket } from '../../agents/services/agentsApi'
+import { useCategoriesQuery } from '../../categories/hooks/useCategoriesQuery'
 import DeleteTicketConfirmModal from '../components/DeleteTicketConfirmModal'
 import { useTicketDetailQuery } from '../hooks/useTicketDetailQuery'
 import { deleteTicket, listTicketComments, patchTicket, postTicketComment } from '../services/ticketsApi'
-import type { PatchTicketPayload, TicketAuditEntry, TicketComment, TicketStatus } from '../types/ticket.types'
+import type {
+  PatchTicketPayload,
+  TicketAuditEntry,
+  TicketComment,
+  TicketPriority,
+  TicketStatus,
+} from '../types/ticket.types'
+import { TICKET_AI_STATUS_OPTIONS, TICKET_PRIORITY_OPTIONS } from '../types/ticket.types'
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Abierto',
   in_progress: 'En progreso',
   closed: 'Cerrado',
-}
-
-const PRIORITY_LABEL: Record<string, string> = {
-  low: 'Baja',
-  medium: 'Media',
-  high: 'Alta',
-  critical: 'Crítica',
 }
 
 function formatDate(iso: string) {
@@ -104,9 +106,13 @@ export default function TicketDetailPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [transferError, setTransferError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
+  const [savingField, setSavingField] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>({})
 
   const isAdmin = user?.role === 'admin'
   const canStaff = user?.role === 'admin' || user?.role === 'agent'
+
+  const categoriesQuery = useCategoriesQuery(!!ticket)
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteTicket(ticketId),
@@ -132,16 +138,37 @@ export default function TicketDetailPage() {
 
   const patchMutation = useMutation({
     mutationFn: (payload: PatchTicketPayload) => patchTicket(ticketId, payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] })
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setFormError(null)
+      if (variables && typeof variables === 'object') {
+        const keys = Object.keys(variables as PatchTicketPayload)
+        if (keys.length === 1) {
+          setFieldErrors((prev) => ({ ...prev, [keys[0]]: null }))
+        }
+      }
     },
-    onError: (e: unknown) => {
-      setFormError(parseApiError(e))
+    onError: (e: unknown, variables) => {
+      const msg = parseApiError(e)
+      if (variables && typeof variables === 'object') {
+        const keys = Object.keys(variables as PatchTicketPayload)
+        if (keys.length === 1) {
+          setFieldErrors((prev) => ({ ...prev, [keys[0]]: msg }))
+          return
+        }
+      }
+      setFormError(msg)
     },
   })
+
+  function patchField(fieldKey: string, payload: PatchTicketPayload) {
+    setSavingField(fieldKey)
+    patchMutation.mutate(payload, {
+      onSettled: () => setSavingField(null),
+    })
+  }
 
   const transferMutation = useMutation({
     mutationFn: (toUserId: number) => transferTicket(ticketId, toUserId),
@@ -217,6 +244,19 @@ export default function TicketDetailPage() {
   }
 
   const comments: TicketComment[] = commentsQuery.data?.results ?? []
+
+  const categoryOptions = (() => {
+    const fromApi = (categoriesQuery.data?.results ?? []).map((c) => ({
+      value: c.name,
+      label: c.name,
+    }))
+    if (ticket?.category && !fromApi.some((o) => o.value === ticket.category)) {
+      return [{ value: ticket.category, label: `${ticket.category} (legado)` }, ...fromApi]
+    }
+    return fromApi
+  })()
+
+  const currentAiStatus = ticket?.ai_status?.trim() || 'Sin IA'
 
   async function handleDownloadAttachment(downloadUrl: string, filename: string, attId: number) {
     try {
@@ -299,24 +339,6 @@ export default function TicketDetailPage() {
               </p>
               <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Prioridad</dt>
-                  <dd className="mt-1 text-on-surface">{PRIORITY_LABEL[ticket.priority] ?? ticket.priority}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Categoría</dt>
-                  <dd className="mt-1 text-on-surface">{ticket.category ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Clasificación IA</dt>
-                  <dd className="mt-1 text-on-surface">{ticket.ai_status?.trim() || 'Sin IA'}</dd>
-                </div>
-                {ticket.ai_motivo?.trim() ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Motivo IA</dt>
-                    <dd className="mt-1 whitespace-pre-wrap text-on-surface">{ticket.ai_motivo}</dd>
-                  </div>
-                ) : null}
-                <div>
                   <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Remitente (correo)
                   </dt>
@@ -345,18 +367,6 @@ export default function TicketDetailPage() {
                 <div>
                   <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Creador (id)</dt>
                   <dd className="mt-1 text-on-surface">{ticket.created_by ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Cierre</dt>
-                  <dd className="mt-1 text-on-surface">{ticket.closed_at ? formatDate(ticket.closed_at) : '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Última transferencia</dt>
-                  <dd className="mt-1 text-on-surface">
-                    {ticket.transferred_at
-                      ? `${formatDate(ticket.transferred_at)} (por usuario #${ticket.transferred_by ?? '—'})`
-                      : '—'}
-                  </dd>
                 </div>
               </dl>
             </div>
@@ -443,7 +453,7 @@ export default function TicketDetailPage() {
                 <button
                   type="submit"
                   disabled={commentMutation.isPending}
-                  className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-slate-900 disabled:opacity-60"
+                  className="btn-primary px-4 py-2 text-sm"
                 >
                   {commentMutation.isPending ? 'Publicando…' : 'Publicar comentario'}
                 </button>
@@ -454,6 +464,82 @@ export default function TicketDetailPage() {
           <div className="lg:col-span-5">
             <form className="dashboard-panel space-y-4 p-6" onSubmit={onSave}>
               <h3 className="font-architectural text-lg font-bold text-on-surface">Gestión</h3>
+
+              <div className="space-y-4 rounded-xl border border-white/10 bg-surface-container-low/30 p-4">
+                {canStaff ? (
+                  <>
+                    <EditableSelect
+                      label="Prioridad"
+                      value={ticket.priority}
+                      options={TICKET_PRIORITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                      onChange={(v) => patchField('priority', { priority: v as TicketPriority })}
+                      disabled={!canStaff}
+                      saving={savingField === 'priority'}
+                      error={fieldErrors.priority}
+                    />
+                    <EditableSelect
+                      label="Categoría"
+                      value={ticket.category ?? ''}
+                      options={
+                        categoryOptions.length > 0
+                          ? categoryOptions
+                          : [{ value: ticket.category ?? '', label: ticket.category ?? '—' }]
+                      }
+                      onChange={(v) => patchField('category', { category: v })}
+                      disabled={categoriesQuery.isLoading || categoryOptions.length === 0}
+                      saving={savingField === 'category'}
+                      error={fieldErrors.category}
+                      hint="Catálogo administrable en Ajustes."
+                    />
+                    <EditableSelect
+                      label="Clasificación IA"
+                      value={currentAiStatus}
+                      options={TICKET_AI_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                      onChange={(v) => patchField('ai_status', { ai_status: v })}
+                      saving={savingField === 'ai_status'}
+                      error={fieldErrors.ai_status}
+                    />
+                  </>
+                ) : (
+                  <dl className="grid gap-3 text-sm">
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Prioridad</dt>
+                      <dd className="mt-1 text-on-surface">
+                        {TICKET_PRIORITY_OPTIONS.find((o) => o.value === ticket.priority)?.label ?? ticket.priority}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Categoría</dt>
+                      <dd className="mt-1 text-on-surface">{ticket.category ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                        Clasificación IA
+                      </dt>
+                      <dd className="mt-1 text-on-surface">{currentAiStatus}</dd>
+                    </div>
+                  </dl>
+                )}
+
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-on-surface-variant">Motivo IA</p>
+                  <p className="whitespace-pre-wrap rounded-lg border border-white/10 bg-surface-container-low/50 px-3 py-2 text-sm text-on-surface">
+                    {ticket.ai_motivo?.trim() || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-on-surface-variant">Cierre</p>
+                  <p className="text-sm text-on-surface">{ticket.closed_at ? formatDate(ticket.closed_at) : '—'}</p>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-on-surface-variant">Última transferencia</p>
+                  <p className="text-sm text-on-surface">
+                    {ticket.transferred_at
+                      ? `${formatDate(ticket.transferred_at)} (por usuario #${ticket.transferred_by ?? '—'})`
+                      : '—'}
+                  </p>
+                </div>
+              </div>
 
               {canStaff && ticket ? (
                 <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
@@ -587,7 +673,7 @@ export default function TicketDetailPage() {
               <button
                 type="submit"
                 disabled={patchMutation.isPending}
-                className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-slate-900 disabled:opacity-60"
+                className="btn-primary w-full px-4 py-2.5 text-sm"
               >
                 {patchMutation.isPending ? 'Guardando…' : 'Guardar cambios'}
               </button>
@@ -605,7 +691,7 @@ export default function TicketDetailPage() {
                     setDeleteError(null)
                     setDeleteOpen(true)
                   }}
-                  className="mt-4 w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-200 hover:bg-red-500/20"
+                  className="btn-danger-outline mt-4 w-full px-4 py-2.5 text-sm"
                 >
                   Eliminar ticket
                 </button>

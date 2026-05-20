@@ -4,20 +4,13 @@ import { useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { createTicket } from '../services/ticketsApi'
-import type { TicketCategory, TicketPriority } from '../types/ticket.types'
-import { TICKET_CATEGORIES } from '../types/ticket.types'
+import { useCategoriesQuery } from '../../categories/hooks/useCategoriesQuery'
+import { TICKET_PRIORITY_OPTIONS, type TicketCategoryName, type TicketPriority } from '../types/ticket.types'
 
 type Props = {
   open: boolean
   onClose: () => void
 }
-
-const priorityChoices: { value: TicketPriority; label: string }[] = [
-  { value: 'low', label: 'Baja' },
-  { value: 'medium', label: 'Media' },
-  { value: 'high', label: 'Alta' },
-  { value: 'critical', label: 'Crítica' },
-]
 
 function parseApiError(err: unknown): string {
   if (!(err instanceof ApiError)) return 'No se pudo crear el ticket.'
@@ -42,8 +35,11 @@ export default function NewTicketModal({ open, onClose }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<TicketPriority>('medium')
-  const [category, setCategory] = useState<TicketCategory>('Soporte técnico')
+  const [category, setCategory] = useState<TicketCategoryName>('')
   const [formError, setFormError] = useState<string | null>(null)
+
+  const categoriesQuery = useCategoriesQuery(open)
+  const categoryOptions = categoriesQuery.data?.results ?? []
 
   const mutation = useMutation({
     mutationFn: createTicket,
@@ -53,7 +49,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
       setTitle('')
       setDescription('')
       setPriority('medium')
-      setCategory('Soporte técnico')
+      setCategory(categoryOptions[0]?.name ?? '')
       setFormError(null)
       onClose()
       navigate('/tickets')
@@ -72,6 +68,13 @@ export default function NewTicketModal({ open, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  useEffect(() => {
+    if (!open || categoryOptions.length === 0) return
+    if (!category || !categoryOptions.some((c) => c.name === category)) {
+      setCategory(categoryOptions[0].name)
+    }
+  }, [open, categoryOptions, category])
+
   if (!open) return null
 
   function onSubmit(e: FormEvent) {
@@ -81,6 +84,10 @@ export default function NewTicketModal({ open, onClose }: Props) {
     const d = description.trim()
     if (!t || !d) {
       setFormError('Título y descripción son obligatorios.')
+      return
+    }
+    if (!category.trim()) {
+      setFormError('Selecciona una categoría.')
       return
     }
     mutation.mutate({
@@ -118,7 +125,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-on-surface-variant transition-colors hover:bg-white/10 hover:text-on-surface"
+            className="btn-icon p-1.5"
             aria-label="Cerrar"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
@@ -168,7 +175,7 @@ export default function NewTicketModal({ open, onClose }: Props) {
                 onChange={(e) => setPriority(e.target.value as TicketPriority)}
                 className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
               >
-                {priorityChoices.map((o) => (
+                {TICKET_PRIORITY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -182,14 +189,19 @@ export default function NewTicketModal({ open, onClose }: Props) {
               <select
                 id={categoryId}
                 value={category}
-                onChange={(e) => setCategory(e.target.value as TicketCategory)}
-                className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={categoriesQuery.isLoading || categoryOptions.length === 0}
+                className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25 disabled:opacity-60"
               >
-                {TICKET_CATEGORIES.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
+                {categoryOptions.length === 0 ? (
+                  <option value="">Sin categorías disponibles</option>
+                ) : (
+                  categoryOptions.map((o) => (
+                    <option key={o.id} value={o.name}>
+                      {o.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
@@ -204,14 +216,14 @@ export default function NewTicketModal({ open, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-white/5"
+              className="btn-secondary px-4 py-2.5 text-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="btn-new-ticket rounded-xl px-5 py-2.5 text-sm font-bold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-new-ticket rounded-xl px-5 py-2.5 text-sm font-bold text-slate-900"
             >
               {mutation.isPending ? 'Creando…' : 'Crear ticket'}
             </button>

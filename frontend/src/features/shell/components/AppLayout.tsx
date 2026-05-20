@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { AuthenticatedProfilePhoto } from '../../../shared/components/AuthenticatedProfilePhoto'
+import { BrandMark } from '../../../shared/components/BrandMark'
 import type { UserRole } from '../../auth/types/auth.types'
 import { useAuth } from '../../auth/context/AuthContext'
 import { withPhotoCacheBust } from '../../../shared/lib/photoUrl'
@@ -42,19 +43,7 @@ function AppLayout() {
       <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} />
 
       <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col overflow-y-auto border-r border-white/5 bg-surface-container-low py-6">
-        <div className="mb-8 px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary shadow-lg shadow-primary/25">
-              <span className="material-symbols-outlined text-[20px] text-slate-900">architecture</span>
-            </div>
-            <div>
-              <h1 className="font-headline text-lg font-bold tracking-tight text-on-surface">Nocturnal</h1>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                Architect v1.0
-              </p>
-            </div>
-          </div>
-        </div>
+        <BrandMark variant="sidebar" />
 
         <nav className="flex flex-1 flex-col space-y-1 px-3">
           {navItems.map((item) => (
@@ -87,7 +76,7 @@ function AppLayout() {
           <button
             type="button"
             onClick={onLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 py-2.5 text-sm font-semibold text-on-surface-variant transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-on-surface"
+            className="btn-secondary flex w-full items-center justify-center gap-2 py-2.5 text-sm"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>
             Cerrar sesión
@@ -107,7 +96,7 @@ function AppLayout() {
 
         <div className="flex shrink-0 items-center gap-5 text-on-surface-variant">
           <NotificationCenter />
-          <button type="button" className="rounded-lg p-1.5 transition-colors hover:bg-white/5 hover:text-on-surface">
+          <button type="button" className="btn-icon p-1.5">
             <span className="material-symbols-outlined text-[22px]">help_outline</span>
           </button>
           <div className="hidden h-8 w-px bg-white/10 sm:block" />

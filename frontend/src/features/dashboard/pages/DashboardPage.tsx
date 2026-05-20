@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 
 import { listAgents } from '../../agents/services/agentsApi'
 import { useAuth } from '../../auth/context/AuthContext'
-import { TICKET_CATEGORIES, type TicketPriority } from '../../tickets/types/ticket.types'
+import { useCategoriesQuery } from '../../categories/hooks/useCategoriesQuery'
+import type { TicketPriority } from '../../tickets/types/ticket.types'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 
 const PRIORITY_OPTS: { value: TicketPriority | ''; label: string }[] = [
@@ -57,6 +58,9 @@ export default function DashboardPage() {
     queryFn: listAgents,
     enabled: !!user && isAdmin,
   })
+
+  const categoriesQuery = useCategoriesQuery(!!user)
+  const categoryOptions = categoriesQuery.data?.results ?? []
 
   const activeAgents = useMemo(
     () => (agentsQuery.data?.results ?? []).filter((a) => a.is_active),
@@ -134,9 +138,9 @@ export default function DashboardPage() {
               className="w-full rounded-lg border border-white/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
             >
               <option value="">Todas</option>
-              {TICKET_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
+              {categoryOptions.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -238,7 +242,7 @@ export default function DashboardPage() {
             <h3 className="font-architectural text-xl font-bold text-on-surface">Evolución del volumen de tickets</h3>
             <button
               type="button"
-              className="rounded-lg p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="btn-icon p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               aria-label="Más opciones"
             >
               <span className="material-symbols-outlined text-xl">more_horiz</span>
@@ -265,7 +269,7 @@ export default function DashboardPage() {
             <h3 className="font-architectural text-xl font-bold text-on-surface">Actividad reciente</h3>
             <Link
               to="/tickets"
-              className="rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+              className="btn-outline-primary rounded-md px-2 py-1 text-[11px] uppercase tracking-[0.16em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             >
               Ver tickets
             </Link>

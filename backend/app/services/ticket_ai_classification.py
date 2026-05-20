@@ -40,11 +40,14 @@ def _run_classification(ticket_id: int, subject: str, body: str) -> None:
             else:
                 conn.commit()
                 logger.info(
-                    "IA: ticket_id=%s actualizado category=%s priority=%s fallback=%s",
+                    "IA: ticket_id=%s actualizado category=%s priority=%s fallback=%s "
+                    "model=%s total_s=%s",
                     ticket_id,
                     updated.category,
                     updated.priority,
                     result.get("used_fallback"),
+                    ai_service.ollama_model(),
+                    result.get("ollama_total_seconds"),
                 )
     except Exception:
         logger.exception("IA: error al persistir clasificación ticket_id=%s", ticket_id)

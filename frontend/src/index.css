@@ -21,6 +21,10 @@
   #root {
     min-height: 100vh;
   }
+
+  button:enabled {
+    cursor: pointer;
+  }
 }
 
 @layer components {
@@ -58,6 +62,11 @@
   .dashboard-kpi:hover {
     border-color: rgb(79 209 197 / 0.22);
     box-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.5);
+    transform: translateY(-2px);
+  }
+
+  .nav-item:hover {
+    background-color: rgb(255 255 255 / 0.06);
   }
 
   .dashboard-range-pill {
@@ -73,14 +82,273 @@
     box-shadow:
       0 4px 14px -3px rgb(79 209 197 / 0.45),
       0 0 0 1px rgb(255 255 255 / 0.06) inset;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
   }
 
-  .btn-new-ticket:hover {
-    filter: brightness(1.06);
+  .btn-new-ticket:hover:not(:disabled) {
+    filter: brightness(1.1);
+    box-shadow:
+      0 8px 22px -4px rgb(79 209 197 / 0.55),
+      0 0 0 1px rgb(255 255 255 / 0.1) inset;
+    transform: translateY(-1px);
   }
 
-  .btn-new-ticket:active {
-    transform: scale(0.98);
+  .btn-new-ticket:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    filter: brightness(1.02);
+  }
+
+  .btn-new-ticket:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Botón principal (CTA) */
+  .btn-primary {
+    border-radius: 0.75rem;
+    border: none;
+    background: linear-gradient(135deg, #4fd1c5 0%, #38b2ac 48%, #319795 100%);
+    color: #0f172a;
+    font-weight: 700;
+    box-shadow:
+      0 2px 10px -2px rgb(79 209 197 / 0.4),
+      0 0 0 1px rgb(255 255 255 / 0.08) inset;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+    box-shadow:
+      0 8px 24px -6px rgb(79 209 197 / 0.55),
+      0 0 0 1px rgb(255 255 255 / 0.12) inset;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    filter: brightness(1.03);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-primary-sm {
+    border-radius: 0.5rem;
+    border: none;
+    background: linear-gradient(135deg, #4fd1c5 0%, #38b2ac 100%);
+    color: #0f172a;
+    font-weight: 700;
+    box-shadow: 0 2px 8px -2px rgb(79 209 197 / 0.35);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
+  }
+
+  .btn-primary-sm:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 14px -4px rgb(79 209 197 / 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary-sm:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-primary-sm:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Botón secundario / cancelar */
+  .btn-secondary {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.15);
+    background-color: transparent;
+    color: #94a3b8;
+    font-weight: 600;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.28);
+    background-color: rgb(255 255 255 / 0.08);
+    color: #f8fafc;
+    box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    background-color: rgb(255 255 255 / 0.05);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Botón contorno (listas, acciones menores) */
+  .btn-outline {
+    border-radius: 0.5rem;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    background-color: transparent;
+    color: #94a3b8;
+    font-weight: 600;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.15s ease;
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.22);
+    background-color: rgb(255 255 255 / 0.07);
+    color: #f8fafc;
+    transform: translateY(-0.5px);
+  }
+
+  .btn-outline:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-outline:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-outline-primary {
+    border-radius: 0.5rem;
+    border: 1px solid rgb(79 209 197 / 0.35);
+    background-color: transparent;
+    color: #4fd1c5;
+    font-weight: 600;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.15s ease;
+  }
+
+  .btn-outline-primary:hover:not(:disabled) {
+    border-color: rgb(79 209 197 / 0.6);
+    background-color: rgb(79 209 197 / 0.12);
+    color: #7aebd8;
+    box-shadow: 0 4px 14px -6px rgb(79 209 197 / 0.35);
+    transform: translateY(-0.5px);
+  }
+
+  .btn-outline-primary:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-outline-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Peligro sólido */
+  .btn-danger {
+    border-radius: 0.75rem;
+    border: none;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 2px 10px -2px rgb(220 38 38 / 0.45);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    filter: brightness(1.12);
+    box-shadow: 0 6px 20px -4px rgb(220 38 38 / 0.55);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Peligro contorno */
+  .btn-danger-outline {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(239 68 68 / 0.35);
+    background-color: rgb(239 68 68 / 0.1);
+    color: #fecaca;
+    font-weight: 700;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .btn-danger-outline:hover:not(:disabled) {
+    border-color: rgb(239 68 68 / 0.55);
+    background-color: rgb(239 68 68 / 0.22);
+    box-shadow: 0 4px 16px -6px rgb(220 38 38 / 0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger-outline:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-danger-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Icono / cerrar */
+  .btn-icon {
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: #94a3b8;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.15s ease;
+  }
+
+  .btn-icon:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(255 255 255 / 0.1);
+    color: #f8fafc;
+    transform: scale(1.05);
+  }
+
+  .btn-icon:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 

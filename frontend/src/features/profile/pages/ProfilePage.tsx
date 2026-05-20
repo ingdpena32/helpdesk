@@ -337,7 +337,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={patchMutation.isPending}
-                className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-slate-900 disabled:opacity-60"
+                className="btn-primary px-5 py-2.5 text-sm"
               >
                 {patchMutation.isPending ? 'Guardando…' : 'Guardar cambios'}
               </button>

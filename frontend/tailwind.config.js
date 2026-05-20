@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        /* Nocturnal Architect — alineado a referencia visual */
+        /* NexusDesk — alineado a referencia visual */
         surface: '#0b1120',
         'surface-dim': '#0b1120',
         'surface-container': '#1e293b',

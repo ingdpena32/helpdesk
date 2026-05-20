@@ -1,4 +1,4 @@
-# Helpdesk — Gestión de tickets
+# NexusDesk — Gestión de tickets
 
 Monorepo de **helpdesk/tickets** con **React + TypeScript** (Vite), **API REST en Flask** (Python 3.10+), persistencia en **PostgreSQL** y opcionalmente **Ollama** para clasificación automática de tickets creados por correo.
 
@@ -17,7 +17,7 @@ Monorepo de **helpdesk/tickets** con **React + TypeScript** (Vite), **API REST e
 - **Python** 3.10+
 - **PostgreSQL** (p. ej. PgAdmin 4 o `psql`)
 - Base de datos creada (ej. `helpdesk`)
-- *(Opcional, clasificación IA)* **[Ollama](https://ollama.com/)** en local (`ollama serve`) con el modelo configurado (por defecto `llama3`)
+- *(Opcional, clasificación IA)* **[Ollama](https://ollama.com/)** en local (`ollama serve`) con el modelo definido en `OLLAMA_MODEL` (recomendado: `phi4-mini` u otro modelo ligero en CPU)
 
 ## Base de datos
 
@@ -74,12 +74,15 @@ DB_PASSWORD=tu_contraseña
 
 **Ollama (clasificación automática de tickets por correo)**
 
-| Variable | Descripción | Valor por defecto |
-|----------|-------------|-------------------|
+| Variable | Descripción | Valor por defecto (si falta en `.env`) |
+|----------|-------------|----------------------------------------|
 | `OLLAMA_URL` | URL base del servicio Ollama | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Modelo a usar en `/api/generate` | `llama3` |
-| `OLLAMA_TIMEOUT` | Timeout de la petición HTTP (segundos) | `60` |
-| `OLLAMA_BODY_MAX_CHARS` | Tope de caracteres del cuerpo enviado al prompt | `8000` |
+| `OLLAMA_MODEL` | Modelo en `/api/generate` (sin `:tag` usa el tag por defecto de Ollama) | `phi4-mini` |
+| `OLLAMA_TIMEOUT` | Timeout de lectura HTTP hacia Ollama (s); máximo **45** s | `45` |
+| `OLLAMA_BODY_MAX_CHARS` | Máximo de caracteres del cuerpo del correo en el prompt | `4000` |
+| `OLLAMA_CONNECT_TIMEOUT` | *(Opcional)* Timeout de conexión TCP (s) | `5` |
+| `OLLAMA_TEMPERATURE` | *(Opcional)* Temperatura del modelo | `0` |
+| `OLLAMA_NUM_PREDICT` | *(Opcional)* Tope de tokens generados (`num_predict`) | `256` |
 
 **Correo (opcional)** — ver `backend/app/email/config.py` y comentarios en los SQL de ingestión (`7_email_ingestion.sql`, etc.): usuario IMAP, `EMAIL_WORKER_*`, dominios permitidos, etc.
 
@@ -125,7 +128,7 @@ Tras crear un **ticket nuevo** desde un correo, la API programa en **segundo pla
 | GET | `/api/tickets` | Listado paginado: `count`, `next`, `previous`, `results`. Query: `status`, `priority`, `category`, `assigned_to`, `page`, `page_size`. |
 | POST | `/api/tickets` | Crear: `title`, `description`, `priority`, `category` (el creador lo toma del token). |
 | GET / PATCH / DELETE | `/api/tickets/{id}` | Detalle, actualización parcial, borrado lógico (admin). |
-| POST | `/api/test-ollama` | **Prueba de clasificación IA** (solo agente/admin autenticado). Cuerpo: `{"subject":"...","body":"..."}`. |
+| POST | `/api/test-ollama` | **Prueba de clasificación IA** (agente/admin). Cuerpo: `{"subject":"...","body":"..."}`. La respuesta incluye `ollama_model`, duraciones (`ollama_request_seconds`, `ollama_server_duration_seconds`, `ollama_total_seconds`), `used_fallback`, `approx_prompt_tokens`, `cleaned_json` y `raw_model_json`. |
 
 En rutas autenticadas el cliente envía **`Authorization: Bearer <access>`**.
 
@@ -166,7 +169,7 @@ npm run preview
 ## Flujo recomendado en local
 
 1. PostgreSQL arriba + esquema aplicado (`schema.sql` o migraciones, incl. **`11_ticket_ai_ollama.sql`** si la BD es antigua).
-2. *(Opcional IA)* `ollama serve` y `ollama pull llama3` (o el modelo de `OLLAMA_MODEL`).
+2. *(Opcional IA)* `ollama serve` y `ollama pull phi4-mini` (o el modelo indicado en `OLLAMA_MODEL`).
 3. `cd backend && pip install -r requirements.txt && python main.py`
 4. *(Correo + IA)* en otra terminal: `cd backend && python -m app.email.worker`
 5. `cd frontend && npm run dev`

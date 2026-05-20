@@ -38,3 +38,8 @@ def can_manage_agent_directory(role: str) -> bool:
 def can_mutate_other_agents(role: str) -> bool:
     """Crear/editar/desactivar otros usuarios (solo admin)."""
     return is_admin(role)
+
+
+def can_manage_categories(role: str) -> bool:
+    """CRUD del catálogo de categorías (solo admin)."""
+    return is_admin(role)

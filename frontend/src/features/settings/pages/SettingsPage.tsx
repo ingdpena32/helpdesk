@@ -2,7 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 
 import { ApiError } from '../../../shared/api/client'
 import { useAuth } from '../../auth/context/AuthContext'
-import { canExportSystemData } from '../../auth/permissions'
+import { canExportSystemData, canManageCategories } from '../../auth/permissions'
+import CategoryAdminPanel from '../../categories/components/CategoryAdminPanel'
+import { useCategoriesQuery } from '../../categories/hooks/useCategoriesQuery'
 import { fetchTicketsExport } from '../services/adminExportApi'
 
 function triggerJsonDownload(data: unknown, filenameBase: string) {
@@ -32,6 +34,8 @@ function exportErrorMessage(err: unknown): string {
 export default function SettingsPage() {
   const { user } = useAuth()
   const showExport = canExportSystemData(user?.role)
+  const showCategories = canManageCategories(user?.role)
+  const categoriesQuery = useCategoriesQuery(showCategories)
 
   const exportMutation = useMutation({
     mutationFn: fetchTicketsExport,
@@ -50,6 +54,13 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {showCategories ? (
+        <CategoryAdminPanel
+          categories={categoriesQuery.data?.results ?? []}
+          loading={categoriesQuery.isLoading}
+        />
+      ) : null}
+
       {showExport ? (
         <div className="dashboard-panel space-y-4 p-8">
           <h3 className="font-architectural text-lg font-bold text-on-surface">Exportación de tickets</h3>
@@ -66,18 +77,18 @@ export default function SettingsPage() {
             type="button"
             disabled={exportMutation.isPending}
             onClick={() => exportMutation.mutate()}
-            className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-slate-900 disabled:opacity-60"
+            className="btn-primary px-5 py-2.5 text-sm"
           >
             {exportMutation.isPending ? 'Generando…' : 'Descargar exportación JSON'}
           </button>
         </div>
-      ) : (
+      ) : !showCategories ? (
         <div className="dashboard-panel p-8">
           <p className="text-sm text-on-surface-variant">
             No hay opciones adicionales para tu rol. Si necesitas un informe global, contacta con un administrador.
           </p>
         </div>
-      )}
+      ) : null}
     </section>
   )
 }

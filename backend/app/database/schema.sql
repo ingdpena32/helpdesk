@@ -72,6 +72,19 @@ CREATE INDEX idx_sessions_refresh_token ON sessions (refresh_token);
 CREATE INDEX idx_sessions_user_id ON sessions (user_id);
 
 -- -----------------------------------------------------------------------------
+-- categories (catálogo administrable)
+-- -----------------------------------------------------------------------------
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT categories_name_unique UNIQUE (name)
+);
+
+CREATE UNIQUE INDEX categories_name_lower_unique ON categories (LOWER(TRIM(name)));
+
+-- -----------------------------------------------------------------------------
 -- tickets
 -- -----------------------------------------------------------------------------
 CREATE TABLE tickets (
@@ -98,23 +111,10 @@ CREATE TABLE tickets (
     ai_status TEXT NOT NULL DEFAULT 'Sin IA',
     ai_motivo TEXT,
     CONSTRAINT tickets_priority_check CHECK (priority IN ('low', 'medium', 'high', 'critical')),
-    CONSTRAINT tickets_status_check CHECK (status IN ('open', 'in_progress', 'closed')),
-    CONSTRAINT tickets_category_check CHECK (
-        category IN (
-            'ERP',
-            'Infraestructura',
-            'Soporte técnico',
-            'Bases de datos',
-            'Desarrollo',
-            'Soporte TI',
-            'Redes',
-            'RRHH',
-            'Contabilidad',
-            'Compras',
-            'Sin clasificar'
-        )
-    )
+    CONSTRAINT tickets_status_check CHECK (status IN ('open', 'in_progress', 'closed'))
 );
+
+COMMENT ON COLUMN tickets.category IS 'Nombre de categoría; validado contra tabla categories.';
 
 CREATE UNIQUE INDEX uq_tickets_email_message_id ON tickets (email_message_id)
 WHERE email_message_id IS NOT NULL;

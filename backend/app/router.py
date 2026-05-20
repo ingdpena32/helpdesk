@@ -13,6 +13,7 @@ from app.controllers import (
     agent_controller,
     attachment_controller,
     auth_controller,
+    category_controller,
     notification_controller,
     ollama_test_controller,
     profile_controller,
@@ -79,6 +80,19 @@ def dispatch(
 
     if m == "GET" and np == "/api/admin/tickets-export":
         return admin_controller.get_tickets_export(json_body, q, h)
+
+    if m == "GET" and np == "/api/categories":
+        return category_controller.get_list(json_body, q, h)
+    if m == "POST" and np == "/api/categories":
+        return category_controller.post_create(json_body, q, h)
+
+    _cat_id = re.match(r"^/api/categories/(\d+)$", np)
+    if _cat_id:
+        cid = int(_cat_id.group(1))
+        if m == "PUT":
+            return category_controller.put_update(json_body, q, h, cid)
+        if m == "DELETE":
+            return category_controller.delete_one(json_body, q, h, cid)
 
     _prof_fn = re.match(r"^/api/uploads/profiles/([^/]+)$", np)
     if m == "GET" and _prof_fn:

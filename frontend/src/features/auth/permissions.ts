@@ -13,3 +13,8 @@ export function isOperativeStaffRole(role: string | UserRole | undefined | null)
 export function canExportSystemData(role: string | UserRole | undefined | null): boolean {
   return role === 'admin'
 }
+
+/** CRUD del catálogo de categorías (solo administrador). */
+export function canManageCategories(role: string | UserRole | undefined | null): boolean {
+  return role === 'admin'
+}

@@ -124,7 +124,7 @@ export default function AgentsPage() {
                           <button
                             type="button"
                             onClick={() => setEditAgent(a)}
-                            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-white/5"
+                            className="btn-outline-primary px-3 py-1.5 text-xs"
                           >
                             Editar
                           </button>
@@ -132,7 +132,7 @@ export default function AgentsPage() {
                             type="button"
                             onClick={() => onDeleteClick(a)}
                             disabled={deleteMutation.isPending || !a.is_active}
-                            className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="btn-danger-outline px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
                           >
                             Desactivar
                           </button>

@@ -45,4 +45,10 @@ def post_test_ollama(
         "used_fallback": result["used_fallback"],
         "ollama_url": ai_service.ollama_base_url(),
         "ollama_model": ai_service.ollama_model(),
+        "ollama_request_seconds": result.get("ollama_request_seconds"),
+        "ollama_server_duration_seconds": result.get("ollama_server_duration_seconds"),
+        "ollama_total_seconds": result.get("ollama_total_seconds"),
+        "approx_prompt_tokens": result.get("approx_prompt_tokens"),
+        "cleaned_json": result.get("final_classification_json"),
+        "raw_model_json": result.get("raw_model_json"),
     }

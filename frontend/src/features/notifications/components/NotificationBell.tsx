@@ -150,7 +150,7 @@ export default function NotificationBell({
         aria-haspopup="dialog"
         aria-label="Notificaciones"
         onClick={() => setOpen(!open)}
-        className="relative rounded-lg p-1.5 transition-colors hover:bg-white/5 hover:text-on-surface"
+        className="btn-icon relative p-1.5"
       >
         <span className="material-symbols-outlined text-[22px]">notifications</span>
         {unreadCount > 0 ? (
@@ -185,14 +185,14 @@ export function NotificationToastHost({
           key={t.id}
           type="button"
           onClick={() => void onClickToast(t)}
-          className="pointer-events-auto flex flex-col gap-1 rounded-xl border border-white/10 bg-surface-container-high/98 px-4 py-3 text-left shadow-xl shadow-black/40 backdrop-blur-xl transition hover:border-primary/40"
+          className="pointer-events-auto flex flex-col gap-1 rounded-xl border border-white/10 bg-surface-container-high/98 px-4 py-3 text-left shadow-xl shadow-black/40 backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/10"
         >
           <div className="flex items-start justify-between gap-2">
             <span className="text-xs font-bold uppercase tracking-wide text-primary">Ticket #{t.ticketId}</span>
             <span
               role="button"
               tabIndex={0}
-              className="pointer-events-auto -m-1 rounded p-1 text-on-surface-variant hover:bg-white/10"
+              className="btn-icon pointer-events-auto -m-1 p-1"
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
+import { BrandMark } from '../../../shared/components/BrandMark'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
@@ -67,15 +68,7 @@ export default function LoginPage() {
       />
 
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#1e293b] p-8 shadow-2xl shadow-black/40">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary shadow-lg shadow-primary/25">
-            <span className="material-symbols-outlined text-[22px] text-slate-900">architecture</span>
-          </div>
-          <div>
-            <h1 className="font-headline text-xl font-bold tracking-tight text-on-surface">Nocturnal</h1>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Acceso</p>
-          </div>
-        </div>
+        <BrandMark variant="login" />
 
         <form className="space-y-5" onSubmit={onSubmit}>
           <div>
@@ -119,7 +112,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-slate-900 transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-new-ticket flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-slate-900"
           >
             {submitting ? 'Entrando…' : 'Iniciar sesión'}
           </button>

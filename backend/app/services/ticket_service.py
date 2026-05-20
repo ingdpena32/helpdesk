@@ -9,32 +9,18 @@ from app.auth import permissions
 from app.database.db import get_connection
 from app.models.ticket import Ticket
 from app.repositories import (
+    category_repository,
     ticket_attachment_repository,
     ticket_audit_repository,
     ticket_comment_repository,
     ticket_repository,
     user_repository,
 )
-from app.services import auth_service, notification_service
-
-ALLOWED_CATEGORIES: frozenset[str] = frozenset(
-    {
-        "ERP",
-        "Infraestructura",
-        "Soporte técnico",
-        "Bases de datos",
-        "Desarrollo",
-        "Soporte TI",
-        "Redes",
-        "RRHH",
-        "Contabilidad",
-        "Compras",
-        "Sin clasificar",
-    }
-)
+from app.services import auth_service, category_service, notification_service
 
 ALLOWED_PRIORITIES: frozenset[str] = frozenset({"low", "medium", "high", "critical"})
 ALLOWED_STATUS: frozenset[str] = frozenset({"open", "in_progress", "closed"})
+ALLOWED_AI_STATUS: frozenset[str] = frozenset({"Sin IA", "Procesando IA", "Clasificado", "Error"})
 
 
 def normalize_priority_value(raw: str | None) -> str | None:
@@ -103,12 +89,6 @@ def create_from_request(headers: Mapping[str, str], body: dict[str, Any]) -> tup
 
     if not isinstance(category, str):
         return 400, {"error": "category debe ser texto"}
-    category_clean = category.strip()
-    if category_clean not in ALLOWED_CATEGORIES:
-        return 400, {
-            "error": "category debe ser una de: ERP, Infraestructura, Soporte técnico, Bases de datos, Desarrollo, "
-            "Soporte TI, Redes, RRHH, Contabilidad, Compras, Sin clasificar",
-        }
 
     title_clean = title.strip()
     desc_clean = description.strip()
@@ -119,13 +99,20 @@ def create_from_request(headers: Mapping[str, str], body: dict[str, Any]) -> tup
             if actor is None:
                 return err_status or 401, err_body or {"error": "No autorizado"}
 
+            ok_cat, cat_err = category_service.validate_ticket_category(conn, category)
+            if not ok_cat:
+                return 400, {"error": cat_err or "category inválida"}
+            category_clean = category.strip()
+            cat_row = category_repository.find_by_name_ci(conn, category_clean)
+            category_canon = cat_row.name if cat_row else category_clean
+
             ticket = ticket_repository.insert(
                 conn,
                 title=title_clean,
                 description=desc_clean,
                 created_by=actor.id,
                 priority=priority_canon,
-                category=category_clean,
+                category=category_canon,
             )
             notification_service.notify_ticket_created_manual(conn, ticket, exclude_user_id=actor.id)
             conn.commit()
@@ -336,6 +323,45 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
                 if not effective:
                     return 400, {"error": "No se puede cerrar un ticket sin resolución"}
 
+            new_priority = ticket.priority
+            if "priority" in body:
+                if not permissions.is_operative_staff(user.role):
+                    return 403, {"error": "Sin permiso para cambiar prioridad"}
+                raw_p = body.get("priority")
+                if not isinstance(raw_p, str):
+                    return 400, {"error": "priority debe ser texto"}
+                p_canon = normalize_priority_value(raw_p)
+                if p_canon not in ALLOWED_PRIORITIES:
+                    return 400, {"error": "priority debe ser low, medium, high o critical"}
+                new_priority = p_canon
+
+            new_category = ticket.category
+            if "category" in body:
+                if not permissions.is_operative_staff(user.role):
+                    return 403, {"error": "Sin permiso para cambiar categoría"}
+                raw_c = body.get("category")
+                if not isinstance(raw_c, str):
+                    return 400, {"error": "category debe ser texto"}
+                ok_cat, cat_err = category_service.validate_ticket_category(conn, raw_c)
+                if not ok_cat:
+                    return 400, {"error": cat_err or "category inválida"}
+                cat_row = category_repository.find_by_name_ci(conn, raw_c)
+                new_category = cat_row.name if cat_row else raw_c.strip()
+
+            new_ai_status = ticket.ai_status
+            if "ai_status" in body:
+                if not permissions.is_operative_staff(user.role):
+                    return 403, {"error": "Sin permiso para cambiar clasificación IA"}
+                raw_ai = body.get("ai_status")
+                if not isinstance(raw_ai, str):
+                    return 400, {"error": "ai_status debe ser texto"}
+                ai_clean = raw_ai.strip()
+                if ai_clean not in ALLOWED_AI_STATUS:
+                    return 400, {
+                        "error": "ai_status debe ser uno de: Sin IA, Procesando IA, Clasificado, Error",
+                    }
+                new_ai_status = ai_clean
+
             now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
             if new_status == "closed":
                 closed_at = now_naive
@@ -343,6 +369,10 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
                 closed_at = None
 
             prev_assigned = ticket.assigned_to
+            patch_priority = new_priority if new_priority != ticket.priority else None
+            patch_category = new_category if new_category != ticket.category else None
+            patch_ai = new_ai_status if new_ai_status != ticket.ai_status else None
+
             updated = ticket_repository.update_fields(
                 conn,
                 ticket_id,
@@ -350,6 +380,9 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
                 assigned_to=new_assigned,
                 resolution=new_resolution,
                 closed_at=closed_at,
+                priority=patch_priority,
+                category=patch_category,
+                ai_status=patch_ai,
             )
             if updated is None:
                 conn.rollback()
@@ -367,6 +400,12 @@ def patch_ticket(headers: Mapping[str, str], ticket_id: int, body: dict[str, Any
                 changed["assigned_to"] = {"from": ticket.assigned_to, "to": new_assigned}
             if (new_resolution or "").strip() != (ticket.resolution or "").strip():
                 changed["resolution"] = {"updated": True}
+            if new_priority != ticket.priority:
+                changed["priority"] = {"from": ticket.priority, "to": new_priority}
+            if new_category != ticket.category:
+                changed["category"] = {"from": ticket.category, "to": new_category}
+            if new_ai_status != ticket.ai_status:
+                changed["ai_status"] = {"from": ticket.ai_status, "to": new_ai_status}
             if changed:
                 ticket_audit_repository.insert_event(
                     conn,

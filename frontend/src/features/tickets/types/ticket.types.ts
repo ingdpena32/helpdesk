@@ -2,32 +2,21 @@ export type TicketStatus = 'open' | 'in_progress' | 'closed'
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
 
-/** Categorías válidas (mismo contrato que el backend). */
-export type TicketCategory =
-  | 'ERP'
-  | 'Infraestructura'
-  | 'Soporte técnico'
-  | 'Bases de datos'
-  | 'Desarrollo'
-  | 'Soporte TI'
-  | 'Redes'
-  | 'RRHH'
-  | 'Contabilidad'
-  | 'Compras'
-  | 'Sin clasificar'
+/** Nombre de categoría (catálogo dinámico en BD). */
+export type TicketCategoryName = string
 
-export const TICKET_CATEGORIES: { value: TicketCategory; label: string }[] = [
-  { value: 'ERP', label: 'ERP' },
-  { value: 'Infraestructura', label: 'Infraestructura' },
-  { value: 'Soporte técnico', label: 'Soporte técnico' },
-  { value: 'Bases de datos', label: 'Bases de datos' },
-  { value: 'Desarrollo', label: 'Desarrollo' },
-  { value: 'Soporte TI', label: 'Soporte TI' },
-  { value: 'Redes', label: 'Redes' },
-  { value: 'RRHH', label: 'RRHH' },
-  { value: 'Contabilidad', label: 'Contabilidad' },
-  { value: 'Compras', label: 'Compras' },
-  { value: 'Sin clasificar', label: 'Sin clasificar' },
+export const TICKET_AI_STATUS_OPTIONS = [
+  { value: 'Sin IA', label: 'Sin IA' },
+  { value: 'Procesando IA', label: 'Procesando IA' },
+  { value: 'Clasificado', label: 'Clasificado' },
+  { value: 'Error', label: 'Error' },
+] as const
+
+export const TICKET_PRIORITY_OPTIONS: { value: TicketPriority; label: string }[] = [
+  { value: 'low', label: 'Baja' },
+  { value: 'medium', label: 'Media' },
+  { value: 'high', label: 'Alta' },
+  { value: 'critical', label: 'Crítica' },
 ]
 
 export type TicketAttachmentMeta = {
@@ -92,13 +81,16 @@ export type CreateTicketPayload = {
   title: string
   description: string
   priority: TicketPriority
-  category: TicketCategory
+  category: TicketCategoryName
 }
 
 export type PatchTicketPayload = {
   status?: TicketStatus
   assigned_to?: number | null
   resolution?: string | null
+  priority?: TicketPriority
+  category?: TicketCategoryName
+  ai_status?: string
 }
 
 export type TicketComment = {

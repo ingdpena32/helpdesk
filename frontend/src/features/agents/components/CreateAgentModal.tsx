@@ -128,7 +128,7 @@ export default function CreateAgentModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-on-surface-variant transition-colors hover:bg-white/10 hover:text-on-surface"
+            className="btn-icon p-1.5"
             aria-label="Cerrar"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
@@ -265,14 +265,14 @@ export default function CreateAgentModal({ open, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-white/5"
+              className="btn-secondary px-4 py-2.5 text-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-slate-900 disabled:opacity-60"
+              className="btn-primary px-5 py-2.5 text-sm"
             >
               {mutation.isPending ? 'Creando…' : 'Crear agente'}
             </button>

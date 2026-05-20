@@ -238,24 +238,38 @@ def update_fields(
     assigned_to: int | None,
     resolution: str | None,
     closed_at: datetime | None,
+    priority: str | None = None,
+    category: str | None = None,
+    ai_status: str | None = None,
 ) -> Ticket | None:
-    """Actualiza ciclo de vida; no afecta filas eliminadas lógicamente."""
-    with conn.cursor() as cur:
-        cur.execute(
-            f"""
+    """Actualiza ciclo de vida y campos de gestión; no afecta filas eliminadas lógicamente."""
+    sets = [
+        "status = %s",
+        "assigned_to = %s",
+        "resolution = %s",
+        "closed_at = %s",
+    ]
+    params: list[Any] = [status, assigned_to, resolution, closed_at]
+    if priority is not None:
+        sets.append("priority = %s")
+        params.append(priority)
+    if category is not None:
+        sets.append("category = %s")
+        params.append(category)
+    if ai_status is not None:
+        sets.append("ai_status = %s")
+        params.append(ai_status)
+    sets.append("updated_at = NOW()")
+    params.append(ticket_id)
+    sql = f"""
             UPDATE tickets
-            SET
-                status = %s,
-                assigned_to = %s,
-                resolution = %s,
-                closed_at = %s,
-                updated_at = NOW()
+            SET {", ".join(sets)}
             WHERE id = %s AND deleted_at IS NULL
             RETURNING
                 {_SELECT_TICKET_ROW.strip()}
-            """,
-            (status, assigned_to, resolution, closed_at, ticket_id),
-        )
+            """
+    with conn.cursor() as cur:
+        cur.execute(sql, tuple(params))
         row = cur.fetchone()
     if row is None:
         return None
