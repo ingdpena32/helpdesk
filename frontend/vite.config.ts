@@ -1,10 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+
   server: {
+    host: '0.0.0.0',
+
+    allowedHosts: [
+      'unluminescent-erika-unsignalized.ngrok-free.dev',
+    ],
+
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
@@ -12,8 +18,14 @@ export default defineConfig({
       },
     },
   },
-  // Mismo proxy al usar `vite preview` (sin esto, /api no llega al backend Python)
+
   preview: {
+    host: '0.0.0.0',
+
+    allowedHosts: [
+      'unluminescent-erika-unsignalized.ngrok-free.dev',
+    ],
+
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from app.auth import permissions
 from app.database.db import get_connection
 from app.services import ai_service, auth_service
+from app.services.ai_catalog import load_catalog_from_db
 
 
 def post_test_ollama(
@@ -26,6 +27,7 @@ def post_test_ollama(
     if not isinstance(text_body, str):
         return 400, {"error": "body debe ser texto"}
 
+    catalog = None
     try:
         with get_connection() as conn:
             user, err_status, err_body = auth_service.require_user(conn, headers)
@@ -33,10 +35,11 @@ def post_test_ollama(
                 return err_status or 401, err_body or {"error": "No autorizado"}
             if not permissions.is_operative_staff(user.role):
                 return 403, {"error": "Solo personal operativo puede usar esta ruta de prueba"}
+            catalog = load_catalog_from_db(conn)
     except Exception:
-        return 500, {"error": "No se pudo verificar la sesión."}
+        return 500, {"error": "No se pudo verificar la sesión o cargar catálogo de BD."}
 
-    result = ai_service.clasificar_ticket(subject, text_body)
+    result = ai_service.clasificar_ticket(subject, text_body, catalog=catalog)
     return 200, {
         "departamento": result["departamento"],
         "prioridad": result["prioridad_label"],

@@ -20,34 +20,16 @@ from typing import Any
 
 import requests
 
-logger = logging.getLogger(__name__)
-
-# Departamentos permitidos (respuesta del modelo en español, exactos).
-VALID_DEPARTMENTS: frozenset[str] = frozenset(
-    {
-        "Soporte Técnico",
-        "ERP",
-        "Infraestructura",
-        "Inteligencia Artificial",
-        "Desarrollo",
-        "Base de datos",
-        "Sin clasificar",
-    }
+from app.database.db import get_connection
+from app.services.ai_catalog import (
+    ALLOWED_MODEL_JSON_KEYS,
+    AiCatalog,
+    load_catalog_from_db,
+    priority_label_for_db,
+    resolve_category_name,
+    resolve_priority_db,
 )
-
-# Prioridades permitidas en la respuesta JSON (etiquetas en español).
-VALID_PRIORITIES_LABEL: frozenset[str] = frozenset({"Baja", "Media", "Alta", "Crítica"})
-
-FALLBACK_DEPARTMENT = "Sin clasificar"
-FALLBACK_PRIORITY_LABEL = "Media"
-
-# Mapeo a columnas de BD (`tickets.priority`).
-_PRIORITY_LABEL_TO_DB: dict[str, str] = {
-    "Baja": "low",
-    "Media": "medium",
-    "Alta": "high",
-    "Crítica": "critical",
-}
+logger = logging.getLogger(__name__)
 
 # Valores por defecto alineados con hardware limitado / modelos ligeros (phi4-mini).
 _DEFAULT_OLLAMA_URL = "http://localhost:11434"
@@ -71,9 +53,15 @@ _INJECTION_MARKERS = (
     "```",
 )
 
-# Prompt: listas fijas (orden estable, texto mínimo).
-_DEPTS_PROMPT = ", ".join(sorted(VALID_DEPARTMENTS))
-_PRIOS_PROMPT = ", ".join(sorted(VALID_PRIORITIES_LABEL))
+def _catalog_for_prompt(catalog: AiCatalog) -> tuple[str, str, str, str]:
+    depts = ", ".join(sorted(catalog.categories))
+    prios = ", ".join(sorted(catalog.priority_labels))
+    return (
+        depts,
+        prios,
+        catalog.fallback_category,
+        catalog.fallback_priority_label,
+    )
 
 
 def ollama_base_url() -> str:
@@ -177,18 +165,32 @@ def sanitize_for_prompt(subject: str, body: str) -> tuple[str, str]:
     return sub, raw_body
 
 
-def _build_prompt(subject: str, body: str) -> str:
+def _build_prompt(subject: str, body: str, catalog: AiCatalog) -> str:
+    depts_prompt, prios_prompt, fb_dept, fb_prio = _catalog_for_prompt(catalog)
     return (
         "Salida: un solo objeto JSON. Sin markdown. Sin texto antes ni después.\n"
-        'Claves exactas: "departamento","prioridad","motivo".\n'
-        f"- departamento: una de [{_DEPTS_PROMPT}].\n"
-        f"- prioridad: una de [{_PRIOS_PROMPT}].\n"
+        'Claves exactas (solo estas tres, sin claves extra): "departamento","prioridad","motivo".\n'
+        f"- departamento: una de [{depts_prompt}]. Texto exacto de la lista.\n"
+        f"- prioridad: una de [{prios_prompt}].\n"
         "- motivo: español, máximo 180 caracteres, criterio breve.\n"
         "Si hay duda: "
-        f'departamento "{FALLBACK_DEPARTMENT}", prioridad "{FALLBACK_PRIORITY_LABEL}".\n'
+        f'departamento "{fb_dept}", prioridad "{fb_prio}".\n'
         f"Asunto: {subject}\n"
         f"Cuerpo:\n{body}"
     )
+
+
+def _filter_allowed_model_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """Descarta claves que no son campos de clasificación IA."""
+    extra = set(data.keys()) - ALLOWED_MODEL_JSON_KEYS
+    if extra:
+        logger.warning("Ollama: claves JSON ignoradas (no permitidas): %s", sorted(extra))
+    return {k: data[k] for k in ALLOWED_MODEL_JSON_KEYS if k in data}
+
+
+def _load_catalog() -> AiCatalog:
+    with get_connection() as conn:
+        return load_catalog_from_db(conn)
 
 
 def _normalize_model_response(raw: str) -> str:
@@ -359,23 +361,28 @@ def _call_ollama_generate(prompt: str) -> tuple[str, dict[str, Any]]:
 def fallback_result(
     motivo: str,
     *,
+    catalog: AiCatalog | None = None,
     ollama_request_seconds: float | None = None,
     ollama_server_duration_seconds: float | None = None,
     ollama_total_seconds: float | None = None,
     approx_prompt_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Resultado normalizado cuando la IA no puede clasificar de forma fiable."""
-    prio_label = FALLBACK_PRIORITY_LABEL
+    if catalog is None:
+        catalog = _load_catalog()
+    dept = catalog.fallback_category
+    prio_db = catalog.fallback_priority_db
+    prio_label = catalog.fallback_priority_label
     final_json = {
-        "departamento": FALLBACK_DEPARTMENT,
+        "departamento": dept,
         "prioridad": prio_label,
-        "prioridad_db": _PRIORITY_LABEL_TO_DB[prio_label],
+        "prioridad_db": prio_db,
         "motivo": motivo,
     }
     return {
-        "departamento": FALLBACK_DEPARTMENT,
+        "departamento": dept,
         "prioridad_label": prio_label,
-        "prioridad_db": _PRIORITY_LABEL_TO_DB[prio_label],
+        "prioridad_db": prio_db,
         "motivo": motivo,
         "used_fallback": True,
         "raw_model_json": None,
@@ -387,7 +394,7 @@ def fallback_result(
     }
 
 
-def clasificar_ticket(subject: str, body: str) -> dict[str, Any]:
+def clasificar_ticket(subject: str, body: str, *, catalog: AiCatalog | None = None) -> dict[str, Any]:
     """
     Llama a Ollama y devuelve dict con claves canónicas para el dominio, más metadatos
     de tiempo y `final_classification_json` (salida limpia aplicable al ticket).
@@ -400,8 +407,11 @@ def clasificar_ticket(subject: str, body: str) -> dict[str, Any]:
     - approx_prompt_tokens
     """
     t0 = time.perf_counter()
+    if catalog is None:
+        catalog = _load_catalog()
+
     sub_s, body_s = sanitize_for_prompt(subject, body)
-    prompt = _build_prompt(sub_s, body_s)
+    prompt = _build_prompt(sub_s, body_s, catalog)
     approx_prompt_tokens = _approx_tokens_from_text(prompt)
 
     raw_response_text = ""
@@ -446,6 +456,7 @@ def clasificar_ticket(subject: str, body: str) -> dict[str, Any]:
     if parsed is None:
         out = fallback_result(
             "Clasificación automática no disponible o respuesta inválida; valores por defecto.",
+            catalog=catalog,
             ollama_request_seconds=request_s,
             ollama_server_duration_seconds=server_s,
             ollama_total_seconds=total_s,
@@ -459,28 +470,31 @@ def clasificar_ticket(subject: str, body: str) -> dict[str, Any]:
         )
         return out
 
+    parsed = _filter_allowed_model_keys(parsed)
+
     dept = parsed.get("departamento")
     prio = parsed.get("prioridad")
     motivo = parsed.get("motivo")
 
-    dept_ok = isinstance(dept, str) and dept.strip() in VALID_DEPARTMENTS
-    prio_ok = isinstance(prio, str) and prio.strip() in VALID_PRIORITIES_LABEL
+    dept_canon = resolve_category_name(dept, catalog)
+    prio_db = resolve_priority_db(prio)
+    dept_ok = dept_canon is not None
+    prio_ok = prio_db is not None
 
     if not dept_ok or not prio_ok:
         logger.warning(
-            "Ollama: valores fuera de catálogo model=%s dept=%r prio=%r",
+            "Ollama: valores fuera de catálogo BD model=%s dept=%r prio=%r",
             ollama_model(),
             dept,
             prio,
         )
         used_fallback = True
-        dept_final = FALLBACK_DEPARTMENT
-        prio_label_final = FALLBACK_PRIORITY_LABEL
+        dept_final = catalog.fallback_category
+        prio_db = catalog.fallback_priority_db
+        prio_label_final = catalog.fallback_priority_label
     else:
-        dept_final = dept.strip()
-        prio_label_final = prio.strip()
-
-    prio_db = _PRIORITY_LABEL_TO_DB.get(prio_label_final, "medium")
+        dept_final = dept_canon
+        prio_label_final = priority_label_for_db(prio_db)
 
     motivo_str = (str(motivo).strip() if motivo is not None else "")[:2000]
     if not motivo_str:
