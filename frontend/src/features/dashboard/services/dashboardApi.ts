@@ -3,6 +3,7 @@ import type {
   AgentBreakdownResponse,
   DashboardQueryFilters,
   DashboardStatsResponse,
+  RecentActivityResponse,
 } from '../types/dashboard.types'
 
 function toSearchParams(filters: Record<string, string | number | undefined>): string {
@@ -22,4 +23,12 @@ export function fetchDashboardStats(filters: DashboardQueryFilters = {}): Promis
 export function fetchAgentBreakdown(filters: DashboardQueryFilters = {}): Promise<AgentBreakdownResponse> {
   const qs = toSearchParams(filters)
   return apiGet<AgentBreakdownResponse>(`/api/dashboard/agent-breakdown${qs}`)
+}
+
+export function fetchRecentActivity(
+  filters: DashboardQueryFilters = {},
+  limit = 15,
+): Promise<RecentActivityResponse> {
+  const qs = toSearchParams({ ...filters, limit })
+  return apiGet<RecentActivityResponse>(`/api/dashboard/recent-activity${qs}`)
 }

@@ -48,17 +48,49 @@
 
   .dashboard-kpi {
     position: relative;
+    display: flex;
+    min-height: 8.5rem;
+    flex-direction: column;
     overflow: hidden;
     border-radius: 0.875rem;
     border: 1px solid var(--panel-border);
     background-color: rgb(var(--color-surface-container));
-    padding: 1.5rem;
+    padding: 1.25rem 1.5rem;
     box-shadow: var(--kpi-shadow);
     transition:
       transform 0.2s ease,
       box-shadow 0.2s ease,
       border-color 0.2s ease,
       background-color 0.25s ease;
+  }
+
+  .dashboard-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .dashboard-filter-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(var(--color-overlay) / 0.1);
+    background-color: rgb(var(--color-surface-container-low) / 0.8);
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: rgb(var(--color-on-surface));
+    outline: none;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .dashboard-filter-input:focus {
+    border-color: rgb(var(--color-primary) / 0.4);
+    box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
   }
 
   .dashboard-kpi:hover {

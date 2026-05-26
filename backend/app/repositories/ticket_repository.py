@@ -105,26 +105,28 @@ def _ticket_list_conditions(
     search: str | None = None,
     created_from: datetime | None = None,
     created_to: datetime | None = None,
+    table_alias: str = "",
 ) -> tuple[list[str], list[Any]]:
-    conditions: list[str] = ["deleted_at IS NULL"]
+    col = f"{table_alias}." if table_alias else ""
+    conditions: list[str] = [f"{col}deleted_at IS NULL"]
     params: list[Any] = []
     if status:
-        conditions.append("status = %s")
+        conditions.append(f"{col}status = %s")
         params.append(status)
     if priority:
-        conditions.append("priority = %s")
+        conditions.append(f"{col}priority = %s")
         params.append(priority)
     if assigned_to is not None:
-        conditions.append("assigned_to = %s")
+        conditions.append(f"{col}assigned_to = %s")
         params.append(assigned_to)
     if category:
-        conditions.append("category = %s")
+        conditions.append(f"{col}category = %s")
         params.append(category)
     if created_from is not None:
-        conditions.append("created_at >= %s")
+        conditions.append(f"{col}created_at >= %s")
         params.append(created_from)
     if created_to is not None:
-        conditions.append("created_at <= %s")
+        conditions.append(f"{col}created_at <= %s")
         params.append(created_to)
     term = (search or "").strip()
     if term:
@@ -132,12 +134,12 @@ def _ticket_list_conditions(
         id_part = ""
         search_params: list[Any] = [like, like, like, like, like, like]
         if term.isdigit():
-            id_part = " OR id = %s"
+            id_part = f" OR {col}id = %s"
             search_params.append(int(term))
         conditions.append(
-            "(title ILIKE %s OR description ILIKE %s OR category ILIKE %s "
-            "OR COALESCE(sender_email, '') ILIKE %s OR COALESCE(sender_name, '') ILIKE %s "
-            "OR COALESCE(ai_motivo, '') ILIKE %s"
+            f"({col}title ILIKE %s OR {col}description ILIKE %s OR {col}category ILIKE %s "
+            f"OR COALESCE({col}sender_email, '') ILIKE %s OR COALESCE({col}sender_name, '') ILIKE %s "
+            f"OR COALESCE({col}ai_motivo, '') ILIKE %s"
             f"{id_part})"
         )
         params.extend(search_params)
@@ -523,6 +525,7 @@ def tickets_by_agent_and_status(
         category=category,
         created_from=created_from,
         created_to=created_to,
+        table_alias="t",
     )
     where = " WHERE " + " AND ".join(conditions)
     sql = f"""
@@ -538,7 +541,7 @@ def tickets_by_agent_and_status(
         FROM tickets t
         LEFT JOIN users u ON u.id = t.assigned_to
         {where}
-        GROUP BY t.assigned_to, agent_label, t.status
+        GROUP BY t.assigned_to, t.status, u.full_name, u.email
         ORDER BY agent_label, t.status
     """
     with conn.cursor() as cur:

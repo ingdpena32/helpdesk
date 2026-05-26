@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
+import { formatApiError } from '../../../shared/api/formatApiError'
 import { fetchDashboardStats } from '../services/dashboardApi'
 import { toDashboardQueryFilters } from '../utils/dashboardFilters'
 import type { DashboardStatsFilters } from '../types/dashboard.types'
@@ -35,6 +36,6 @@ export function useDashboardStats(filters: DashboardStatsFilters) {
     closedPopulation: query.data?.closed ?? null,
     sampleSize: query.data?.closed ?? 0,
     loading: query.isLoading,
-    error: query.error ? (query.error as Error).message : null,
+    error: formatApiError(query.error),
   }
 }

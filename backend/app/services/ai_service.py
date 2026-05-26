@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 # Departamentos permitidos (respuesta del modelo en español, exactos).
 VALID_DEPARTMENTS: frozenset[str] = frozenset(
     {
-        "Soporte TI",
-        "Redes",
+        "Soporte Técnico",
+        "ERP",
         "Infraestructura",
-        "RRHH",
-        "Contabilidad",
-        "Compras",
+        "Inteligencia Artificial",
+        "Desarrollo",
+        "Base de datos",
         "Sin clasificar",
     }
 )

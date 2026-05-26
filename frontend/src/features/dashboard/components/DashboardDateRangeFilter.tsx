@@ -15,10 +15,10 @@ export default function DashboardDateRangeFilter({ from, to, onFromChange, onToC
   const invalid = isDateRangeInvalid(from, to)
 
   return (
-    <div className="sm:col-span-2 lg:col-span-3">
+    <div className="w-full">
       <span className="mb-1.5 block text-xs font-semibold text-on-surface-variant">Rango de fechas</span>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
           <label htmlFor={fromId} className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">
             Desde
           </label>
@@ -28,10 +28,10 @@ export default function DashboardDateRangeFilter({ from, to, onFromChange, onToC
             value={from}
             max={to || undefined}
             onChange={(e) => onFromChange(e.target.value)}
-            className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            className="dashboard-filter-input"
           />
         </div>
-        <div className="flex-1">
+        <div>
           <label htmlFor={toId} className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">
             Hasta
           </label>
@@ -41,7 +41,7 @@ export default function DashboardDateRangeFilter({ from, to, onFromChange, onToC
             value={to}
             min={from || undefined}
             onChange={(e) => onToChange(e.target.value)}
-            className="w-full rounded-lg border border-overlay/10 bg-surface-container-low/80 px-3 py-2.5 text-sm text-on-surface outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/25"
+            className="dashboard-filter-input"
           />
         </div>
       </div>

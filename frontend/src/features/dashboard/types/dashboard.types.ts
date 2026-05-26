@@ -38,3 +38,17 @@ export type AgentBreakdownResponse = {
   statuses: string[]
   status_labels: Record<string, string>
 }
+
+export type RecentActivityItem = {
+  id: string
+  ticket_id: number
+  event_type: string
+  occurred_at: string
+  actor_name: string
+  ticket_title: string
+  summary: string
+}
+
+export type RecentActivityResponse = {
+  results: RecentActivityItem[]
+}

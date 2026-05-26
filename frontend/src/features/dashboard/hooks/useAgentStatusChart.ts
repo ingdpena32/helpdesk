@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
+import { formatApiError } from '../../../shared/api/formatApiError'
 import { fetchAgentBreakdown } from '../services/dashboardApi'
 import type { DashboardStatsFilters } from '../types/dashboard.types'
 import { toDashboardQueryFilters } from '../utils/dashboardFilters'
@@ -27,6 +28,6 @@ export function useAgentStatusChart(filters: DashboardStatsFilters) {
     statusLabels: query.data?.status_labels ?? {},
     maxTotal,
     loading: query.isLoading,
-    error: query.error ? (query.error as Error).message : null,
+    error: formatApiError(query.error),
   }
 }

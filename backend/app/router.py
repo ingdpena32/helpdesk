@@ -88,6 +88,9 @@ def dispatch(
     if m == "GET" and np == "/api/dashboard/agent-breakdown":
         return dashboard_controller.get_agent_breakdown(json_body, q, h)
 
+    if m == "GET" and np == "/api/dashboard/recent-activity":
+        return dashboard_controller.get_recent_activity(json_body, q, h)
+
     if m == "GET" and np == "/api/categories":
         return category_controller.get_list(json_body, q, h)
     if m == "POST" and np == "/api/categories":

@@ -71,8 +71,8 @@ export default function AgentStatusStackedChart({
 
       <div className="overflow-x-auto pb-2">
         <div
-          className="flex min-w-min items-end gap-3 px-1"
-          style={{ minHeight: '12rem' }}
+          className="flex min-w-min items-end justify-center gap-4 px-2 sm:justify-start"
+          style={{ minHeight: '14rem' }}
           role="img"
           aria-label="Gráfico de barras apiladas: tickets por agente y estado"
         >
@@ -81,7 +81,7 @@ export default function AgentStatusStackedChart({
             return (
               <div
                 key={agent.agent_id ?? 'unassigned'}
-                className="flex w-14 shrink-0 flex-col items-center sm:w-16"
+                className="flex w-12 shrink-0 flex-col items-center sm:w-14 md:w-16"
               >
                 <span className="mb-1 text-[10px] font-semibold tabular-nums text-on-surface-variant">
                   {agent.total}
